@@ -13,7 +13,7 @@ message, type
 'my name is Kate', fact
 'good morning', trash
 'she is not here', fact
-'my hair is white', fact,
+'my hair is white', fact
 'when is your birthday', question
 'i was 21 when i wrote this bot', fact
 'when i wrote this bot i was 21', fact
