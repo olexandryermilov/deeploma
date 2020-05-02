@@ -1,5 +1,6 @@
 *.class
 *.log
+*.token
 project/
 target/
 .idea/

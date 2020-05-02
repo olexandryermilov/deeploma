@@ -2,4 +2,4 @@ package com.deeploma.domain
 
 import java.util.UUID
 
-case class User(id: UUID)
+case class User(id: UUID, telegramIdentifier: String)

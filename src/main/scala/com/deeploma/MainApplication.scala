@@ -1,9 +1,8 @@
 package com.deeploma
 
-import java.text.SimpleDateFormat
-
-import com.deeploma.core.{Action, ClockEvent, DatabaseAction, Environment, Event, LoggableAction, TelegramAction}
-import com.deeploma.environments.ClockEnvironment
+import com.deeploma.core._
+import com.deeploma.environments.{ClockEnvironment, TelegramEnvironment}
+import com.deeploma.service.ReactionService
 
 object MainApplication {
 
@@ -14,23 +13,26 @@ object MainApplication {
   lazy val environments: Seq[Environment] = listAllEnvironments()
 
   def listAllEnvironments(): Seq[Environment] = Seq(
-    ClockEnvironment.createEnvironment
+    ClockEnvironment.createEnvironment,
+    TelegramEnvironment.env
   )
 
   def work(): Unit = {
     while (true) {
-      environments.flatMap(_.fetchEvents()).map(reactToEvent).foreach(doAction)
+      for {
+        environment <- environments
+        event <- environment.fetchEvents()
+        reaction <- reactToEvent(event)
+      } yield doAction(reaction)
     }
   }
 
-  def reactToEvent(event: Event): Action = event match {
-    case ClockEvent(time) => LoggableAction(response = new SimpleDateFormat("dd/MM/yyyy hh/mm/ss").format(time))
-  }
+  def reactToEvent(event: Event): Seq[Action] = ReactionService.reactToEvent(event)
 
   def doAction(action: Action): Unit = action match {
     case LoggableAction(response) => println(response)
     case DatabaseAction() => ???
-    case TelegramAction() => ???
+    case TelegramAction(to, text) => TelegramEnvironment.env.sendMessage(to, text)
   }
 
 }
