@@ -1,0 +1,23 @@
+message, type
+'Hi, I am Sasha', fact
+'Where is the nearest library?', question
+'I am 21', fact
+'She works in library', fact
+'it is quite unbeliavable', trash
+'book me a table in restaurant', request
+'remind me to drink water in few minutes', request
+'how to get to the city centre', question
+'i come from ukraine', fact
+'ho ho ho', trash
+'hello', trash
+'my name is Kate', fact
+'good morning', trash
+'she is not here', fact
+'my hair is white', fact,
+'when is your birthday', question
+'i was 21 when i wrote this bot', fact
+'when i wrote this bot i was 21', fact
+'when will the quarantine be over', question
+'how long is this film?', question
+'what day is it today', question
+'what is love, baby don't hurt me', trash
