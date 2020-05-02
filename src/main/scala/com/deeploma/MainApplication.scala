@@ -19,17 +19,23 @@ object MainApplication {
 
   def work(): Unit = {
     while (true) {
-      for {
-        environment <- environments
-        event <- environment.fetchEvents()
-        reaction <- reactToEvent(event)
-      } yield doAction(reaction)
+      val events: Seq[Event] = environments.flatMap(environment => environment.fetchEvents())
+      val actions: Seq[Action] = reactToEvents(events)
+      actions.foreach(doAction)
     }
   }
 
-  def reactToEvent(event: Event): Seq[Action] = ReactionService.reactToEvent(event)
+  private def reactToEvents(events: Seq[Event]): Seq[Action] = {
+    val reactions = for {
+      event <- events
+      reaction <- reactToEvent(event)
+    } yield reaction
+    reactions ++ ReactionService.checkForEmptyTelegramResponses(events, reactions)
+  }
 
-  def doAction(action: Action): Unit = action match {
+  private def reactToEvent(event: Event): Seq[Action] = ReactionService.reactToEvent(event)
+
+  private def doAction(action: Action): Unit = action match {
     case LoggableAction(response) => println(response)
     case DatabaseAction() => ???
     case TelegramAction(to, text) => TelegramEnvironment.env.sendMessage(to, text)
