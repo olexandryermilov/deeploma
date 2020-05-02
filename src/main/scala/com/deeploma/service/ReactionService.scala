@@ -18,7 +18,10 @@ object ReactionService {
       .filterNot(event => reactions
         .filter(reaction => reaction.isInstanceOf[TelegramAction])
         .exists(reaction => reaction.asInstanceOf[TelegramAction].to == event.asInstanceOf[TelegramEvent].message.chat.id)
-      ).map(event => sorryTelegramEvent(event.asInstanceOf[TelegramEvent].message.chat.id))
+      ).map(event => {
+      NoResponseLogger.handleNoResponseEvent(event)
+      sorryTelegramEvent(event.asInstanceOf[TelegramEvent].message.chat.id)
+    })
 
   private def clockEvent(clockEvent: ClockEvent): Seq[Action] = Seq(
     //LoggableAction(response = new SimpleDateFormat("dd/MM/yyyy hh/mm/ss").format(clockEvent.time))
