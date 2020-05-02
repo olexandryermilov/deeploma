@@ -1,4 +1,4 @@
-message, type
+message_text, message_type
 "Hi, I am Sasha", fact
 "Where is the nearest library?", question
 "I am 21", fact
