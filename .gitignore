@@ -1,6 +1,6 @@
 *.class
 *.log
-*.token
+src/main/resources/bot.token
 project/
 target/
 .idea/
