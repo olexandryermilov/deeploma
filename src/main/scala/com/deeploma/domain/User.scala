@@ -2,4 +2,9 @@ package com.deeploma.domain
 
 import java.util.UUID
 
-case class User(id: UUID, telegramIdentifier: String)
+import com.deeploma.core.{TelegramContext, UserContext}
+
+case class User(id: UUID,
+                telegramContext: Option[TelegramContext] = None,
+                userContext: Option[UserContext] = None
+               )

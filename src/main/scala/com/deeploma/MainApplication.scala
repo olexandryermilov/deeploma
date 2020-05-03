@@ -1,7 +1,9 @@
 package com.deeploma
 
 import com.deeploma.core._
+import com.deeploma.domain.User
 import com.deeploma.environments.{ClockEnvironment, TelegramEnvironment}
+import com.deeploma.repository.InMemoryUserRepository
 import com.deeploma.service.ReactionService
 
 object MainApplication {
@@ -37,8 +39,12 @@ object MainApplication {
 
   private def doAction(action: Action): Unit = action match {
     case LoggableAction(response) => println(response)
-    case DatabaseAction() => ???
     case TelegramAction(to, text) => TelegramEnvironment.env.sendMessage(to, text)
+    case SaveOrUpdateUserAction(id, telegramContext, userContext) => InMemoryUserRepository.repository.saveUser(User(
+      id,
+      telegramContext,
+      userContext
+    ))
   }
 
 }

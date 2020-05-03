@@ -1,7 +1,13 @@
 package com.deeploma.core
 
+import java.util.UUID
+
 sealed trait Action
 
 case class LoggableAction(response: String) extends Action
-case class DatabaseAction() extends Action
+
+sealed trait DatabaseAction extends Action
+
 case class TelegramAction(to: Long, text: String) extends Action
+
+case class SaveOrUpdateUserAction(id: UUID, telegramContext: Option[TelegramContext] = None, userContext: Option[UserContext] = None) extends DatabaseAction
