@@ -27,7 +27,7 @@ object MainApplication {
     }
   }
 
-  private def reactToEvents(events: Seq[Event]): Seq[Action] = {
+  def reactToEvents(events: Seq[Event]): Seq[Action] = {
     val reactions = for {
       event <- events
       reaction <- reactToEvent(event)

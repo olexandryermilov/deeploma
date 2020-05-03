@@ -56,7 +56,7 @@ object ReactionService {
         }
       }
     Seq(
-      LoggableAction(response = event.message.toString),
+      //LoggableAction(response = event.message.toString),
     ) ++ userActions
   }
 
@@ -70,6 +70,6 @@ object ReactionService {
     )
   }
 
-  private val askForName = "Hi, I don't know you, please, tell me your name"
-  private val sorryNoAnswer = "Sorry {name}, I don't know yet how to respond to your message. But I'm still learning"
+  val askForName = "Hi, I don't know you, please, tell me your name"
+  val sorryNoAnswer = "Sorry {name}, I don't know yet how to respond to your message. But I'm still learning"
 }
