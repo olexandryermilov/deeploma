@@ -3,7 +3,7 @@ package com.deeploma.service
 import java.text.SimpleDateFormat
 import java.util.UUID
 
-import com.deeploma.core.{Action, ClockEvent, Event, LoggableAction, SaveOrUpdateUserAction, TelegramAction, TelegramContext, TelegramEvent}
+import com.deeploma.core.{Action, ClockEvent, Event, LoggableAction, SaveOrUpdateUserAction, TelegramAction, TelegramContext, TelegramEvent, UserContext}
 import com.deeploma.repository.InMemoryUserRepository
 
 object ReactionService {
@@ -47,7 +47,7 @@ object ReactionService {
               val name = event.message.text.get
               val niceToMeetYou = TelegramAction(id, s"Hi, $name! Nice to meet you!")
               Seq(
-                SaveOrUpdateUserAction(id = user.id, telegramContext = Some(TelegramContext(id, Some(niceToMeetYou)))),
+                SaveOrUpdateUserAction(id = user.id, telegramContext = Some(TelegramContext(id, Some(niceToMeetYou))), userContext = Some(UserContext(name))),
                 niceToMeetYou
               )
             case _ => Seq.empty
@@ -62,11 +62,14 @@ object ReactionService {
 
   private def unknownEvent(event: Event): Seq[Action] = Seq.empty
 
-  private def sorryTelegramEvent(chatId: Long): Action = TelegramAction(
-    chatId,
-    sorryNoAnswer
-  )
+  private def sorryTelegramEvent(chatId: Long): Action = {
+    val userName = InMemoryUserRepository.repository.getUserByTelegramChatId(chatId).flatMap(_.userContext.map(_.name)).getOrElse("")
+    TelegramAction(
+      chatId,
+      sorryNoAnswer.replace("{name}", userName)
+    )
+  }
 
   private val askForName = "Hi, I don't know you, please, tell me your name"
-  private val sorryNoAnswer = "Sorry, I don't know yet how to respond to your message. But I'm still learning"
+  private val sorryNoAnswer = "Sorry {name}, I don't know yet how to respond to your message. But I'm still learning"
 }
