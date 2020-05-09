@@ -27,7 +27,5 @@ object TelegramEnvironment {
     new TelegramEnvironment(bot)
   }
 
-
-
   private def readToken: String = Source.fromResource("bot.token").getLines.mkString
 }

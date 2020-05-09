@@ -3,6 +3,7 @@ package com.deeploma.core
 import java.util.{Date, UUID}
 
 import com.bot4s.telegram.models.Message
+import com.deeploma.domain.Reminder
 
 sealed trait Event
 
@@ -16,3 +17,4 @@ case class UserEvent(userId: UUID) extends Event
  */
 case class ClockEvent(time: Date) extends Event
 case class TelegramEvent(message: Message) extends Event
+case class ReminderEvent(reminder: Reminder) extends Event
