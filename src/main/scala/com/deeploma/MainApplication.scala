@@ -37,7 +37,7 @@ object MainApplication {
 
   private def reactToEvent(event: Event): Seq[Action] = ReactionService.reactToEvent(event)
 
-  private def doAction(action: Action): Unit = action match {
+  def doAction(action: Action): Unit = action match {
     case LoggableAction(response) => println(response)
     case TelegramAction(to, text) => TelegramEnvironment.env.sendMessage(to, text)
     case SaveOrUpdateUserAction(id, telegramContext, userContext) => InMemoryUserRepository.repository.saveUser(User(

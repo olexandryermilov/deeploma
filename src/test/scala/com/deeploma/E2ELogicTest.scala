@@ -9,12 +9,32 @@ import org.specs2.specification.Scope
 class E2ELogicTest extends Specification {
     "main flow" should {
       "work for happy path" in new baseCtx {
-        val givenEvents: Seq[Event] = Seq(TelegramEvent(message))
+        var givenEvents: Seq[Event] = Seq(TelegramEvent(message))
 
-        val expected: Seq[Action] = Seq(
+        var expected: Seq[Action] = Seq(
           TelegramAction(to = chatId, text = ReactionService.askForName)
         )
-        MainApplication.reactToEvents(givenEvents) must containAllOf(expected)
+        var actions: Seq[Action] = MainApplication.reactToEvents(givenEvents)
+         actions must containAllOf(expected)
+        actions.foreach(MainApplication.doAction)
+
+        val name = "Sasha"
+        givenEvents = Seq(TelegramEvent(message = message.copy(text= Some(name))))
+        expected = Seq(
+          TelegramAction(to = chatId, text = s"Hi, $name! Nice to meet you!")
+        )
+
+        actions = MainApplication.reactToEvents(givenEvents)
+        actions must containAllOf(expected)
+        actions.foreach(MainApplication.doAction)
+        givenEvents = Seq(TelegramEvent(message = message.copy(text= Some(name))))
+        expected = Seq(
+          TelegramAction(to = chatId, text = ReactionService.sorryNoAnswer.replace("{name}", name))
+        )
+
+        actions = MainApplication.reactToEvents(givenEvents)
+        actions must containAllOf(expected)
+        actions.foreach(MainApplication.doAction)
       }
     }
 

@@ -40,7 +40,6 @@ object ReactionService {
         )
       else {
         val user = maybeUser.get
-        println(user)
         user.telegramContext match {
           case Some(context) => context.lastActionDone match {
             case Some(TelegramAction(id, text)) if text == askForName =>
