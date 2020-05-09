@@ -11,10 +11,8 @@ class InMemoryUserRepository extends UserRepository {
 
   override def getUser(uuid: UUID): Option[User] = usersStorage.find(_.id == uuid)
 
-  override def saveUser(user: User): Unit = {
+  override def saveUser(user: User): Unit =
     usersStorage = usersStorage.filter(_.id != user.id) ++ Seq(user)
-    user
-  }
 
   override def getAllUsers(): Seq[User] = usersStorage
 
