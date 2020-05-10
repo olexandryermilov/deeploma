@@ -65,7 +65,7 @@ object ReactionService {
   private def unknownEvent(event: Event): Seq[Action] = Seq.empty
 
   private def parseRemindRequest(event: TelegramEvent): Seq[Action] = {
-    val text = event.message.text.getOrElse("")
+    val text = event.message.text.getOrElse("").toLowerCase
     if (text.contains("remind")) {
       val chatId = event.message.chat.id
       val user = InMemoryUserRepository.repository.getUserByTelegramChatId(chatId).get
