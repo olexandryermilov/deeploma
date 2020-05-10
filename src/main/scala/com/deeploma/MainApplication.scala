@@ -42,13 +42,13 @@ object MainApplication {
 
   def doAction(action: Action): Unit = action match {
     case LoggableAction(response) => println(response)
-    case TelegramAction(to, text) => TelegramEnvironment.env.sendMessage(to, text)
-    case SaveOrUpdateUserAction(id, telegramContext, userContext) => InMemoryUserRepository.repository.saveUser(User(
-      id, telegramContext, userContext
-    ))
-    case SaveOrUpdateReminderAction(id, userId, text, when, wasSent) => InMemoryReminderRepository.repo.saveOrUpdateReminder(Reminder(
-      id, userId, text, when, wasSent
-    ))
+    case action@TelegramAction(to, text) => {
+      TelegramEnvironment.env.sendMessage(to, text)
+      val user = InMemoryUserRepository.repository.getUserByTelegramChatId(chatId = to)
+      if(user.nonEmpty)doAction(SaveOrUpdateUserAction(user.get.withLastTelegramActionDone(action)))
+    }
+    case SaveOrUpdateUserAction(user) => InMemoryUserRepository.repository.saveUser(user)
+    case SaveOrUpdateReminderAction(reminder) => InMemoryReminderRepository.repo.saveOrUpdateReminder(reminder)
     case EmptyAction() =>
   }
 

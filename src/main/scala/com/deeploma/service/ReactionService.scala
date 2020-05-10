@@ -1,8 +1,10 @@
 package com.deeploma.service
 
+import java.text.{DateFormat, SimpleDateFormat}
 import java.util.{Date, UUID}
 
 import com.deeploma.core._
+import com.deeploma.domain.{Reminder, User}
 import com.deeploma.repository.InMemoryUserRepository
 
 object ReactionService {
@@ -32,11 +34,12 @@ object ReactionService {
   private def telegramEvent(event: TelegramEvent): Seq[Action] = {
     val chatId = event.message.chat.id
     val maybeUser = InMemoryUserRepository.repository.getUserByTelegramChatId(chatId)
+    val textMessage = event.message.text.getOrElse("")
     val userActions: Seq[Action] =
       if (maybeUser.isEmpty)
         Seq(
           TelegramAction(to = chatId, text = askForName),
-          SaveOrUpdateUserAction(id = UUID.randomUUID(), telegramContext = Some(TelegramContext(chatId = chatId, lastActionDone = Some(TelegramAction(to = chatId, text = askForName)))))
+          SaveOrUpdateUserAction(User(id = UUID.randomUUID(), telegramContext = Some(TelegramContext(chatId = chatId, lastActionDone = Some(TelegramAction(to = chatId, text = askForName))))))
         )
       else {
         val user = maybeUser.get
@@ -44,12 +47,25 @@ object ReactionService {
           user.telegramContext match {
             case Some(context) => context.lastActionDone match {
               case Some(TelegramAction(id, text)) if text == askForName =>
-                val name = event.message.text.get
+                val name = textMessage
                 val niceToMeetYou = TelegramAction(id, s"Hi, $name! Nice to meet you!")
                 Seq(
-                  SaveOrUpdateUserAction(id = user.id, telegramContext = Some(TelegramContext(id, Some(niceToMeetYou))), userContext = Some(UserContext(name))),
+                  SaveOrUpdateUserAction(User(id = user.id, telegramContext = Some(TelegramContext(id, Some(niceToMeetYou))), userContext = Some(UserContext(name)))),
                   niceToMeetYou
                 )
+              case Some(TelegramAction(id, text)) if text.contains("you're asking to remind you at") =>
+                if (textMessage.contains("yes")) {
+                  println(text.slice(text.indexOf("`")+1, text.indexOf("~")))
+                  val parsedDate = new SimpleDateFormat("dd/MM/yyyy hh/mm/ss").parse(text.slice(text.indexOf("`")+1, text.indexOf("~")))
+                  Seq(
+                    SaveOrUpdateReminderAction(Reminder(UUID.randomUUID(), user.id, text.slice(text.indexOf("&")+1, text.indexOf("*")), parsedDate, wasSent = false)),
+                    TelegramAction(id, s"Ok, ${user.userContext.map(_.name).getOrElse("")}, I'll create a reminder for you")
+                  )
+                } else
+                  Seq(
+                    TelegramAction(id, s"Ok, ${user.userContext.map(_.name).getOrElse("")}, nevermind."),
+                    SaveOrUpdateUserAction(user.withLastTelegramActionDone(TelegramAction(id, s"Ok, ${user.userContext.map(_.name).getOrElse("")}, nevermind."))),
+                  )
               case _ => Seq.empty
             }
             case None => Seq.empty
@@ -69,10 +85,14 @@ object ReactionService {
     if (text.contains("remind")) {
       val chatId = event.message.chat.id
       val user = InMemoryUserRepository.repository.getUserByTelegramChatId(chatId).get
-      val when: Date = new Date(parseTimeForReminder(text) + System.currentTimeMillis())
+      val when: String = new SimpleDateFormat("dd/MM/yyyy hh/mm/ss").format(new Date(parseTimeForReminder(text) + System.currentTimeMillis()))
+      val what = text
+      val confirmReminder = TelegramAction(to = chatId, text = s"${user.userContext.get.name}, you're asking to remind you at `$when~ to &$what*, right?")
       Seq(
-        TelegramAction(to = chatId, text = s"Ok, ${user.userContext.get.name}! I'll create a reminder for you"),
-        SaveOrUpdateReminderAction(UUID.randomUUID(), user.id, text, when, wasSent = false)
+        //TelegramAction(to = chatId, text = s"Ok, ${user.userContext.get.name}! I'll create a reminder for you"),
+        confirmReminder,
+        SaveOrUpdateUserAction(user.withLastTelegramActionDone(confirmReminder)),
+        //SaveOrUpdateReminderAction(Reminder(UUID.randomUUID(), user.id, text, when, wasSent = false))
       )
     } else
       Seq.empty
@@ -94,12 +114,9 @@ object ReactionService {
         text = event.reminder.text
       )).getOrElse(EmptyAction()),
       SaveOrUpdateReminderAction(
-        event.reminder.id,
-        event.reminder.userId,
-        event.reminder.text,
-        event.reminder.time,
-        wasSent = true
-      )
+        event.reminder.copy(
+          wasSent = true
+        ))
     )
   }
 
