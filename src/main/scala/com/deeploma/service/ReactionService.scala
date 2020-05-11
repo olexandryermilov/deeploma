@@ -34,7 +34,7 @@ object ReactionService {
   private def telegramEvent(event: TelegramEvent): Seq[Action] = {
     val chatId = event.message.chat.id
     val maybeUser = InMemoryUserRepository.repository.getUserByTelegramChatId(chatId)
-    val textMessage = event.message.text.getOrElse("")
+    val textMessage = event.message.text.getOrElse("").toLowerCase
     val userActions: Seq[Action] =
       if (maybeUser.isEmpty)
         Seq(
@@ -72,6 +72,9 @@ object ReactionService {
                   TelegramAction(id, "Ok, I'll create a reminder for you!"),
                   SaveOrUpdateReminderAction(Reminder(UUID.randomUUID(), user.id, textMessage, date, wasSent = false))
                 )
+              case Some(TelegramAction(id, text)) if text.toLowerCase == "forget about it" => Seq(
+                TelegramAction(id, "Ok, done")
+              )
               case _ => Seq.empty
             }
             case None => Seq.empty
