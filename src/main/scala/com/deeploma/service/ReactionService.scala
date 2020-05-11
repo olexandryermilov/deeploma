@@ -54,18 +54,24 @@ object ReactionService {
                   niceToMeetYou
                 )
               case Some(TelegramAction(id, text)) if text.contains("you're asking to remind you at") =>
-                if (textMessage.contains("yes")) {
-                  println(text.slice(text.indexOf("`")+1, text.indexOf("~")))
-                  val parsedDate = new SimpleDateFormat("dd/MM/yyyy hh/mm/ss").parse(text.slice(text.indexOf("`")+1, text.indexOf("~")))
+                val parsedDate = new SimpleDateFormat(dateFormat).parse(text.slice(text.indexOf("`") + 1, text.indexOf("~")))
+                println(parsedDate)
+                val remindText = text.slice(text.indexOf("&") + 1, text.indexOf("*"))
+                if (textMessage.contains("yes") || textMessage.contains("right")) {
                   Seq(
-                    SaveOrUpdateReminderAction(Reminder(UUID.randomUUID(), user.id, text.slice(text.indexOf("&")+1, text.indexOf("*")), parsedDate, wasSent = false)),
+                    SaveOrUpdateReminderAction(Reminder(UUID.randomUUID(), user.id, remindText, parsedDate, wasSent = false)),
                     TelegramAction(id, s"Ok, ${user.userContext.map(_.name).getOrElse("")}, I'll create a reminder for you")
                   )
                 } else
                   Seq(
-                    TelegramAction(id, s"Ok, ${user.userContext.map(_.name).getOrElse("")}, nevermind."),
-                    SaveOrUpdateUserAction(user.withLastTelegramActionDone(TelegramAction(id, s"Ok, ${user.userContext.map(_.name).getOrElse("")}, nevermind."))),
+                    TelegramAction(id, s"Ok, ${user.userContext.map(_.name).getOrElse("")}, then what do you want me to remind you about at ${new SimpleDateFormat(dateFormat).format(parsedDate)}?"),
                   )
+              case Some(TelegramAction(id, text)) if text.contains("then what do you want me to remind you about") =>
+                val date = new SimpleDateFormat(dateFormat).parse(text.split(" ").takeRight(2).mkString(" ").dropRight(1))
+                Seq(
+                  TelegramAction(id, "Ok, I'll create a reminder for you!"),
+                  SaveOrUpdateReminderAction(Reminder(UUID.randomUUID(), user.id, textMessage, date, wasSent = false))
+                )
               case _ => Seq.empty
             }
             case None => Seq.empty
@@ -85,7 +91,7 @@ object ReactionService {
     if (text.contains("remind")) {
       val chatId = event.message.chat.id
       val user = InMemoryUserRepository.repository.getUserByTelegramChatId(chatId).get
-      val when: String = new SimpleDateFormat("dd/MM/yyyy hh/mm/ss").format(new Date(parseTimeForReminder(text) + System.currentTimeMillis()))
+      val when: String = new SimpleDateFormat(dateFormat).format(new Date(parseTimeForReminder(text) + System.currentTimeMillis()))
       val what = text
       val confirmReminder = TelegramAction(to = chatId, text = s"${user.userContext.get.name}, you're asking to remind you at `$when~ to &$what*, right?")
       Seq(
@@ -138,4 +144,5 @@ object ReactionService {
 
   val askForName = "Hi, I don't know you, please, tell me your name"
   val sorryNoAnswer = "Sorry {name}, I don't know yet how to respond to your message. But I'm still learning"
+  val dateFormat = "MM-dd-yyyy HH:mm:ss"
 }
