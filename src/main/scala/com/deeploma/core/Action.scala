@@ -1,7 +1,5 @@
 package com.deeploma.core
 
-import java.util.{Date, UUID}
-
 import com.deeploma.domain.{Reminder, User}
 
 sealed trait Action
@@ -9,6 +7,8 @@ sealed trait Action
 case class EmptyAction() extends Action
 
 case class LoggableAction(response: String) extends Action
+
+case class LogReminderConfirmationAction(text: String, parsed: String, confirmed: String) extends Action
 
 sealed trait DatabaseAction extends Action
 

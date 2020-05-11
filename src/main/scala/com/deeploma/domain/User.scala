@@ -11,4 +11,6 @@ case class User(id: UUID,
   def withLastTelegramActionDone(action: TelegramAction): User = this.copy(
     telegramContext = telegramContext.map(_.copy(lastActionDone = Some(action)))
   )
+
+  def name: String = userContext.map(_.name).getOrElse("")
 }

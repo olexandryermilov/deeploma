@@ -6,4 +6,5 @@ case class Reminder(id: UUID,
                     userId: UUID,
                     text: String,
                     time: Date,
-                    wasSent: Boolean = false)
+                    wasSent: Boolean = false,
+                    wasConfirmed: Boolean = true)

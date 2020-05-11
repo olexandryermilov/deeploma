@@ -1,5 +1,7 @@
 package com.deeploma
 
+import java.io.FileWriter
+
 import com.deeploma.core._
 import com.deeploma.domain.{Reminder, User}
 import com.deeploma.environments.{ClockEnvironment, ReminderEnvironment, TelegramEnvironment}
@@ -23,7 +25,7 @@ object MainApplication {
   def work(): Unit = {
     while (true) {
       val events: Seq[Event] = environments.flatMap(environment => environment.fetchEvents())
-      if(events.nonEmpty)println(events)
+      if (events.nonEmpty) println(events)
       val actions: Seq[Action] = reactToEvents(events)
       actions.foreach(doAction)
     }
@@ -34,7 +36,7 @@ object MainApplication {
       event <- events
       reaction <- reactToEvent(event)
     } yield reaction
-    if(reactions.nonEmpty)println(reactions)
+    if (reactions.nonEmpty) println(reactions)
     reactions ++ ReactionService.checkForEmptyTelegramResponses(events, reactions)
   }
 
@@ -45,11 +47,20 @@ object MainApplication {
     case action@TelegramAction(to, text) => {
       TelegramEnvironment.env.sendMessage(to, text)
       val user = InMemoryUserRepository.repository.getUserByTelegramChatId(chatId = to)
-      if(user.nonEmpty)doAction(SaveOrUpdateUserAction(user.get.withLastTelegramActionDone(action)))
+      if (user.nonEmpty) doAction(SaveOrUpdateUserAction(user.get.withLastTelegramActionDone(action)))
     }
     case SaveOrUpdateUserAction(user) => InMemoryUserRepository.repository.saveUser(user)
     case SaveOrUpdateReminderAction(reminder) => InMemoryReminderRepository.repo.saveOrUpdateReminder(reminder)
+    case LogReminderConfirmationAction(text, parsed, confirmed) => logReminder(text, parsed, confirmed)
     case EmptyAction() =>
+  }
+
+  private def logReminder(text: String, parsed: String, confirmed: String): Unit = {
+    val fw = new FileWriter("datasets/reminders.csv", true)
+    try {
+      fw.write(s"\n$text,$parsed,$confirmed")
+    }
+    finally fw.close()
   }
 
 }

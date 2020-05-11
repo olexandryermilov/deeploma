@@ -5,7 +5,7 @@ import java.util.{Date, UUID}
 
 import com.deeploma.core._
 import com.deeploma.domain.{Reminder, User}
-import com.deeploma.repository.InMemoryUserRepository
+import com.deeploma.repository.{InMemoryReminderRepository, InMemoryUserRepository}
 
 object ReactionService {
 
@@ -34,7 +34,7 @@ object ReactionService {
   private def telegramEvent(event: TelegramEvent): Seq[Action] = {
     val chatId = event.message.chat.id
     val maybeUser = InMemoryUserRepository.repository.getUserByTelegramChatId(chatId)
-    val textMessage = event.message.text.getOrElse("").toLowerCase
+    val textMessage = event.message.text.getOrElse("")
     val userActions: Seq[Action] =
       if (maybeUser.isEmpty)
         Seq(
@@ -53,28 +53,28 @@ object ReactionService {
                   SaveOrUpdateUserAction(User(id = user.id, telegramContext = Some(TelegramContext(id, Some(niceToMeetYou))), userContext = Some(UserContext(name)))),
                   niceToMeetYou
                 )
+              case Some(TelegramAction(id, text)) if textMessage.toLowerCase == "forget about it" => Seq(
+                TelegramAction(id, "Ok, done")
+              )
               case Some(TelegramAction(id, text)) if text.contains("you're asking to remind you at") =>
-                val parsedDate = new SimpleDateFormat(dateFormat).parse(text.slice(text.indexOf("`") + 1, text.indexOf("~")))
-                println(parsedDate)
-                val remindText = text.slice(text.indexOf("&") + 1, text.indexOf("*"))
-                if (textMessage.contains("yes") || textMessage.contains("right")) {
+                val reminder = InMemoryReminderRepository.repo.findReminderByUserId(user.id).get
+                if (textMessage.toLowerCase.contains("yes") || textMessage.toLowerCase.contains("right")) {
                   Seq(
-                    SaveOrUpdateReminderAction(Reminder(UUID.randomUUID(), user.id, remindText, parsedDate, wasSent = false)),
-                    TelegramAction(id, s"Ok, ${user.userContext.map(_.name).getOrElse("")}, I'll create a reminder for you")
+                    SaveOrUpdateReminderAction(reminder.copy(wasConfirmed = true)),
+                    LogReminderConfirmationAction(text, reminder.text, reminder.text),
+                    TelegramAction(id, s"Ok, ${user.name}, I'll create a reminder for you")
                   )
                 } else
                   Seq(
-                    TelegramAction(id, s"Ok, ${user.userContext.map(_.name).getOrElse("")}, then what do you want me to remind you about at ${new SimpleDateFormat(dateFormat).format(parsedDate)}?"),
+                    TelegramAction(id, s"Ok, ${user.name}, then what do you want me to remind you about at ${new SimpleDateFormat(dateFormat).format(reminder.time)}?"),
                   )
               case Some(TelegramAction(id, text)) if text.contains("then what do you want me to remind you about") =>
-                val date = new SimpleDateFormat(dateFormat).parse(text.split(" ").takeRight(2).mkString(" ").dropRight(1))
+                val reminder = InMemoryReminderRepository.repo.findReminderByUserId(user.id).get
                 Seq(
                   TelegramAction(id, "Ok, I'll create a reminder for you!"),
-                  SaveOrUpdateReminderAction(Reminder(UUID.randomUUID(), user.id, textMessage, date, wasSent = false))
+                  LogReminderConfirmationAction(reminder.text, reminder.text, textMessage),
+                  SaveOrUpdateReminderAction(reminder.copy(wasConfirmed = true, text = textMessage))
                 )
-              case Some(TelegramAction(id, text)) if text.toLowerCase == "forget about it" => Seq(
-                TelegramAction(id, "Ok, done")
-              )
               case _ => Seq.empty
             }
             case None => Seq.empty
@@ -94,14 +94,14 @@ object ReactionService {
     if (text.contains("remind")) {
       val chatId = event.message.chat.id
       val user = InMemoryUserRepository.repository.getUserByTelegramChatId(chatId).get
-      val when: String = new SimpleDateFormat(dateFormat).format(new Date(parseTimeForReminder(text) + System.currentTimeMillis()))
+      val whenDate = new Date(parseTimeForReminder(text) + System.currentTimeMillis())
+      val when: String = new SimpleDateFormat(dateFormat).format(whenDate)
       val what = text
-      val confirmReminder = TelegramAction(to = chatId, text = s"${user.userContext.get.name}, you're asking to remind you at `$when~ to &$what*, right?")
+      val confirmReminder = TelegramAction(to = chatId, text = s"${user.userContext.get.name}, you're asking to remind you at $when to $what, right?")
       Seq(
-        //TelegramAction(to = chatId, text = s"Ok, ${user.userContext.get.name}! I'll create a reminder for you"),
         confirmReminder,
         SaveOrUpdateUserAction(user.withLastTelegramActionDone(confirmReminder)),
-        //SaveOrUpdateReminderAction(Reminder(UUID.randomUUID(), user.id, text, when, wasSent = false))
+        SaveOrUpdateReminderAction(Reminder(UUID.randomUUID(), user.id, text, whenDate, wasSent = false, wasConfirmed = false))
       )
     } else
       Seq.empty

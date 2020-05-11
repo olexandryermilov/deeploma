@@ -12,7 +12,8 @@ class InMemoryReminderRepository extends ReminderRepository {
 
   override def findReminderByReminderId(reminderId: UUID): Option[Reminder] = storage.find(_.id == reminderId)
 
-  override def findReminderByUserId(userId: UUID): Option[Reminder] = storage.find(_.userId == userId)
+  override def findReminderByUserId(userId: UUID): Option[Reminder] =
+    storage.find(r => r.userId == userId && !r.wasConfirmed)
 
   override def findDueReminders(): Seq[Reminder] =
     storage.filter(reminder => !reminder.wasSent && reminder.time.getTime < System.currentTimeMillis())
