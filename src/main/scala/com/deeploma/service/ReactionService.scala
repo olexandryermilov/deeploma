@@ -1,11 +1,17 @@
 package com.deeploma.service
 
-import java.text.{DateFormat, SimpleDateFormat}
+import java.text.SimpleDateFormat
 import java.util.{Date, UUID}
 
+import com.deeploma.core
 import com.deeploma.core._
-import com.deeploma.domain.{Reminder, User}
+import com.deeploma.domain.{Reminder, StockInterest, User}
 import com.deeploma.repository.{InMemoryReminderRepository, InMemoryUserRepository}
+import com.deeploma.utils._
+import yahoofinance.YahooFinance
+
+import scala.collection.JavaConverters._
+import scala.util.Try
 
 object ReactionService {
 
@@ -32,9 +38,9 @@ object ReactionService {
   )
 
   private def telegramEvent(event: TelegramEvent): Seq[Action] = {
-    val chatId = event.message.chat.id
-    val maybeUser = InMemoryUserRepository.repository.getUserByTelegramChatId(chatId)
-    val textMessage = event.message.text.getOrElse("")
+    val chatId: Long = event.chatId
+    val maybeUser: Option[User] = getUserByTelegramChatId(chatId)
+    val textMessage: String = event.text
     val userActions: Seq[Action] =
       if (maybeUser.isEmpty)
         Seq(
@@ -42,18 +48,18 @@ object ReactionService {
           SaveOrUpdateUserAction(User(id = UUID.randomUUID(), telegramContext = Some(TelegramContext(chatId = chatId, lastActionDone = Some(TelegramAction(to = chatId, text = askForName))))))
         )
       else {
-        val user = maybeUser.get
-        val resultActions = parseRemindRequest(event) ++ {
+        val user: User = maybeUser.get
+        val resultActions: Seq[Action] = parseRemindRequest(event) ++ parseStockRequest(event) ++ {
           user.telegramContext match {
             case Some(context) => context.lastActionDone match {
               case Some(TelegramAction(id, text)) if text == askForName =>
                 val name = textMessage
                 val niceToMeetYou = TelegramAction(id, s"Hi, $name! Nice to meet you!")
                 Seq(
-                  SaveOrUpdateUserAction(User(id = user.id, telegramContext = Some(TelegramContext(id, Some(niceToMeetYou))), userContext = Some(UserContext(name)))),
+                  SaveOrUpdateUserAction(User(id = user.id, telegramContext = Some(TelegramContext(id, Some(niceToMeetYou))), userContext = Some(UserContext(name, Seq.empty)))),
                   niceToMeetYou
                 )
-              case Some(TelegramAction(id, text)) if textMessage.toLowerCase == "forget about it" => Seq(
+              case Some(TelegramAction(id, _)) if textMessage.toLowerCase == "forget about it" => Seq(
                 TelegramAction(id, "Ok, done")
               )
               case Some(TelegramAction(id, text)) if text.contains("you're asking to remind you at") =>
@@ -89,15 +95,43 @@ object ReactionService {
 
   private def unknownEvent(event: Event): Seq[Action] = Seq.empty
 
+  private def parseStockRequest(event: TelegramEvent): Seq[Action] = {
+    val text: String = event.text.toLowerCase
+    if (text.contains("stock") && !text.startsWith("stock")) {
+      val chatId: Long = event.chatId
+      val user: User = getUserByTelegramChatIdUnsafe(chatId)
+      val words = text.split(" ")
+      val indexOfStock = words.indexOf("stock")
+      val stockName = words(indexOfStock - 1)
+      val maybeStock = Try{
+        YahooFinance.get(stockName.toUpperCase)
+      }.toOption.nullToNone
+      if(maybeStock.nonEmpty) {
+        val stock = maybeStock.get
+        val price = stock.getQuote.getPrice
+        Seq(
+          TelegramAction(chatId, s"$stockName is currently selling for ${price.toString}."),
+          SaveOrUpdateUserAction(user.withNewInterest(StockInterest(stockName)))
+        )
+      }
+      else {
+        Seq(
+          TelegramAction(chatId, "Sorry, I couldn't find this stock you are talking about. Maybe it's not in Yahoo's base yet or you need to check your spelling?")
+        )
+      }
+    }
+    else Seq.empty
+  }
+
   private def parseRemindRequest(event: TelegramEvent): Seq[Action] = {
-    val text = event.message.text.getOrElse("").toLowerCase
+    val text: String = event.text.toLowerCase
     if (text.contains("remind")) {
-      val chatId = event.message.chat.id
-      val user = InMemoryUserRepository.repository.getUserByTelegramChatId(chatId).get
-      val whenDate = new Date(parseTimeForReminder(text) + System.currentTimeMillis())
+      val chatId: Long = event.chatId
+      val user: User = getUserByTelegramChatIdUnsafe(chatId)
+      val whenDate: Date = new Date(parseTimeForReminder(text) + System.currentTimeMillis())
       val when: String = new SimpleDateFormat(dateFormat).format(whenDate)
-      val what = text
-      val confirmReminder = TelegramAction(to = chatId, text = s"${user.userContext.get.name}, you're asking to remind you at $when to $what, right?")
+      val what: String = text
+      val confirmReminder: TelegramAction = TelegramAction(to = chatId, text = s"${user.name}, you're asking to remind you at $when to $what, right?")
       Seq(
         confirmReminder,
         SaveOrUpdateUserAction(user.withLastTelegramActionDone(confirmReminder)),
@@ -108,7 +142,7 @@ object ReactionService {
   }
 
   private def sorryTelegramEvent(chatId: Long): Action = {
-    val userName = InMemoryUserRepository.repository.getUserByTelegramChatId(chatId).flatMap(_.userContext.map(_.name)).getOrElse("")
+    val userName = getUserByTelegramChatId(chatId).map(_.name).getOrElse("")
     TelegramAction(
       chatId,
       sorryNoAnswer.replace("{name}", userName)
@@ -116,7 +150,7 @@ object ReactionService {
   }
 
   private def reminderEvent(event: ReminderEvent): Seq[Action] = {
-    val user = InMemoryUserRepository.repository.getUser(event.reminder.userId).get
+    val user = getUserByUserIdUnsafe(event.reminder.userId)
     Seq(
       user.telegramContext.map(context => TelegramAction(
         to = context.chatId,
@@ -144,6 +178,14 @@ object ReactionService {
     else if (measurement.contains("minute")) 1000 * 60
     else if (measurement.contains("hour")) 1000 * 60 * 60
     else 0
+
+  private def getUserByTelegramChatId(chatId: Long): Option[User] = InMemoryUserRepository.repository.getUserByTelegramChatId(chatId)
+
+  private def getUserByTelegramChatIdUnsafe(chatId: Long): User = getUserByTelegramChatId(chatId).get
+
+  private def getUserByUserId(userId: UUID): Option[User] = InMemoryUserRepository.repository.getUser(userId)
+
+  private def getUserByUserIdUnsafe(userId: UUID): User = getUserByUserId(userId).get
 
   val askForName = "Hi, I don't know you, please, tell me your name"
   val sorryNoAnswer = "Sorry {name}, I don't know yet how to respond to your message. But I'm still learning"
