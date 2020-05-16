@@ -5,7 +5,7 @@ import java.util.{Date, UUID}
 
 import com.deeploma.core
 import com.deeploma.core._
-import com.deeploma.domain.{Reminder, StockInterest, User}
+import com.deeploma.domain.{Reminder, Request, StockInterest, User}
 import com.deeploma.repository.{InMemoryReminderRepository, InMemoryUserRepository}
 import com.deeploma.utils._
 import yahoofinance.YahooFinance
@@ -111,7 +111,8 @@ object ReactionService {
         val price = stock.getQuote.getPrice
         Seq(
           TelegramAction(chatId, s"$stockName is currently selling for ${price.toString}."),
-          SaveOrUpdateUserAction(user.withNewInterest(StockInterest(stockName)))
+          SaveOrUpdateUserAction(user.withNewInterest(StockInterest(stockName))),
+          LogMessageType(text, Request)
         )
       }
       else {
@@ -135,7 +136,8 @@ object ReactionService {
       Seq(
         confirmReminder,
         SaveOrUpdateUserAction(user.withLastTelegramActionDone(confirmReminder)),
-        SaveOrUpdateReminderAction(Reminder(UUID.randomUUID(), user.id, text, whenDate, wasSent = false, wasConfirmed = false))
+        SaveOrUpdateReminderAction(Reminder(UUID.randomUUID(), user.id, text, whenDate, wasSent = false, wasConfirmed = false)),
+        LogMessageType(text, Request)
       )
     } else
       Seq.empty

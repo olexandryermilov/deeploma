@@ -52,6 +52,7 @@ object MainApplication {
     case SaveOrUpdateUserAction(user) => InMemoryUserRepository.repository.saveUser(user)
     case SaveOrUpdateReminderAction(reminder) => InMemoryReminderRepository.repo.saveOrUpdateReminder(reminder)
     case LogReminderConfirmationAction(text, parsed, confirmed) => logReminder(text, parsed, confirmed)
+    case LogMessageType(text, messageType) => logMessage(text, messageType.toString)
     case EmptyAction() =>
   }
 
@@ -59,6 +60,16 @@ object MainApplication {
     val fw = new FileWriter("datasets/reminders.csv", true)
     try {
       fw.write(s"\n$text,$parsed,$confirmed")
+    }
+    finally fw.close()
+  }
+
+  private def logMessage(text: String, messageType: String): Unit = {
+    val fw = new FileWriter("datasets/messages.csv", true)
+    try {
+      fw.write(
+        s"""
+           |"$text",$messageType""".stripMargin)
     }
     finally fw.close()
   }
