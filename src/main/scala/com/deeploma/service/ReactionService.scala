@@ -109,9 +109,9 @@ object ReactionService {
       if(maybeStock.nonEmpty) {
         val stock = maybeStock.get
         val price = stock.getQuote.getPrice
-        Seq(
+        val stockInterest = StockInterest(stockName)
+        (if(!user.interests.contains(stockInterest)) Seq(SaveOrUpdateUserAction(user.withNewInterest(stockInterest))) else Seq.empty) ++ Seq(
           TelegramAction(chatId, s"$stockName is currently selling for ${price.toString}."),
-          SaveOrUpdateUserAction(user.withNewInterest(StockInterest(stockName))),
           LogMessageType(text, Request)
         )
       }
