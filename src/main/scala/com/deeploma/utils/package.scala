@@ -10,8 +10,15 @@ package object utils {
     def text: String = event.message.text.getOrElse("")
   }
 
-  implicit class AnyExtensions[T](val any: Option[T]) extends AnyVal {
+  implicit class OptionExtensions[T](val any: Option[T]) extends AnyVal {
     def nullToNone: Option[T] = if (any.nonEmpty && any.get == null) None else any
+  }
+
+  implicit class AnyExtensions[T](val any: T) extends AnyVal {
+    def nullToFailed: T = {
+      if (any == null) throw new NullPointerException()
+      any
+    }
   }
 
 }

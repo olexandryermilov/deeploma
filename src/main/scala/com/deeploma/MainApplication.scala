@@ -7,10 +7,13 @@ import com.deeploma.domain.{Reminder, User}
 import com.deeploma.environments.{ClockEnvironment, ReminderEnvironment, TelegramEnvironment}
 import com.deeploma.repository.{InMemoryReminderRepository, InMemoryUserRepository}
 import com.deeploma.service.ReactionService
+import com.deeploma.service.ReactionService.mapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
 object MainApplication {
 
   def main(args: Array[String]): Unit = {
+    mapper.registerModule(DefaultScalaModule)
     work()
   }
 

@@ -3,14 +3,16 @@ package com.deeploma.service
 import java.text.SimpleDateFormat
 import java.util.{Date, UUID}
 
-import com.deeploma.core
 import com.deeploma.core._
 import com.deeploma.domain.{Reminder, Request, StockInterest, User}
 import com.deeploma.repository.{InMemoryReminderRepository, InMemoryUserRepository}
 import com.deeploma.utils._
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
+import com.mashape.unirest.http.Unirest
 import yahoofinance.YahooFinance
 
-import scala.collection.JavaConverters._
 import scala.util.Try
 
 object ReactionService {
@@ -151,6 +153,26 @@ object ReactionService {
     )
   }
 
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  case class FoodResp(answer: String)
+
+  private def reactToFoodQuestion(event: TelegramEvent): Seq[Action] = Try {
+    val response = Unirest.get(s"https://spoonacular-recipe-food-nutrition-v1.p.rapidapi.com/recipes/quickAnswer?q={q}")
+      .header("x-rapidapi-host", "spoonacular-recipe-food-nutrition-v1.p.rapidapi.com")
+      .header("x-rapidapi-key", "8265e9934bmsh830223de097c707p107c33jsncdf2b74dfb6b")
+      .routeParam("q", event.text)
+      .asString().getBody
+    println(response)
+
+    val answer = Try(mapper.readValue[FoodResp](response).answer.nullToFailed).getOrElse("")
+    println(answer)
+
+    Seq(TelegramAction(event.chatId, text = answer))
+  }.map {
+    case e: Throwable => Seq(TelegramAction(event.chatId, text = e.getMessage))
+    case x@_ => x
+  }.get
+
   private def reminderEvent(event: ReminderEvent): Seq[Action] = {
     val user = getUserByUserIdUnsafe(event.reminder.userId)
     Seq(
@@ -192,4 +214,7 @@ object ReactionService {
   val askForName = "Hi, I don't know you, please, tell me your name"
   val sorryNoAnswer = "Sorry {name}, I don't know yet how to respond to your message. But I'm still learning"
   val dateFormat = "MM-dd-yyyy HH:mm:ss"
+
+  lazy val mapper = new ObjectMapper() with ScalaObjectMapper
+
 }
