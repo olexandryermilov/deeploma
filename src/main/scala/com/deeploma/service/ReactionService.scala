@@ -4,7 +4,7 @@ import java.text.SimpleDateFormat
 import java.util.{Date, UUID}
 
 import com.deeploma.core._
-import com.deeploma.domain.{Reminder, Request, StockInterest, User}
+import com.deeploma.domain.{Food, Reminder, ReminderTopic, Request, Stock, StockInterest, Undefined, User}
 import com.deeploma.repository.{InMemoryReminderRepository, InMemoryUserRepository}
 import com.deeploma.utils._
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
@@ -51,44 +51,17 @@ object ReactionService {
         )
       else {
         val user: User = maybeUser.get
-        val resultActions: Seq[Action] = parseRemindRequest(event) ++ parseStockRequest(event) ++ {
-          user.telegramContext match {
-            case Some(context) => context.lastActionDone match {
-              case Some(TelegramAction(id, text)) if text == askForName =>
-                val name = textMessage
-                val niceToMeetYou = TelegramAction(id, s"Hi, $name! Nice to meet you!")
-                Seq(
-                  SaveOrUpdateUserAction(User(id = user.id, telegramContext = Some(TelegramContext(id, Some(niceToMeetYou))), userContext = Some(UserContext(name, Seq.empty)))),
-                  niceToMeetYou
-                )
-              case Some(TelegramAction(id, _)) if textMessage.toLowerCase == "forget about it" => Seq(
-                TelegramAction(id, "Ok, done")
-              )
-              case Some(TelegramAction(id, text)) if text.contains("you're asking to remind you at") =>
-                val reminder = InMemoryReminderRepository.repo.findReminderByUserId(user.id).get
-                if (textMessage.toLowerCase.contains("yes") || textMessage.toLowerCase.contains("right")) {
-                  Seq(
-                    SaveOrUpdateReminderAction(reminder.copy(wasConfirmed = true)),
-                    LogReminderConfirmationAction(text, reminder.text, reminder.text),
-                    TelegramAction(id, s"Ok, ${user.name}, I'll create a reminder for you")
-                  )
-                } else
-                  Seq(
-                    TelegramAction(id, s"Ok, ${user.name}, then what do you want me to remind you about at ${new SimpleDateFormat(dateFormat).format(reminder.time)}?"),
-                  )
-              case Some(TelegramAction(id, text)) if text.contains("then what do you want me to remind you about") =>
-                val reminder = InMemoryReminderRepository.repo.findReminderByUserId(user.id).get
-                Seq(
-                  TelegramAction(id, "Ok, I'll create a reminder for you!"),
-                  LogReminderConfirmationAction(reminder.text, reminder.text, textMessage),
-                  SaveOrUpdateReminderAction(reminder.copy(wasConfirmed = true, text = textMessage))
-                )
-              case _ => Seq.empty
-            }
-            case None => Seq.empty
+        val contextActions: Seq[Action]  = parseContext(user, textMessage)
+        if(contextActions.nonEmpty) contextActions
+        else {
+          val topic = TopicDetector.detectTopic(textMessage)
+          topic match {
+            case Food => reactToFoodQuestion(event)
+            case Stock => parseStockRequest(event)
+            case ReminderTopic =>parseRemindRequest(event)
+            case Undefined => Seq.empty
           }
         }
-        resultActions
       }
     Seq(
       //LoggableAction(response = event.message.toString),
@@ -185,6 +158,44 @@ object ReactionService {
           wasSent = true
         ))
     )
+  }
+
+  private def parseContext(user: User, textMessage: String): Seq[Action] = {
+    user.telegramContext match {
+      case Some(context) => context.lastActionDone match {
+        case Some(TelegramAction(id, text)) if text == askForName =>
+          val name = textMessage
+          val niceToMeetYou = TelegramAction(id, s"Hi, $name! Nice to meet you!")
+          Seq(
+            SaveOrUpdateUserAction(User(id = user.id, telegramContext = Some(TelegramContext(id, Some(niceToMeetYou))), userContext = Some(UserContext(name, Seq.empty)))),
+            niceToMeetYou
+          )
+        case Some(TelegramAction(id, _)) if textMessage.toLowerCase == "forget about it" => Seq(
+          TelegramAction(id, "Ok, done")
+        )
+        case Some(TelegramAction(id, text)) if text.contains("you're asking to remind you at") =>
+          val reminder = InMemoryReminderRepository.repo.findReminderByUserId(user.id).get
+          if (textMessage.toLowerCase.contains("yes") || textMessage.toLowerCase.contains("right")) {
+            Seq(
+              SaveOrUpdateReminderAction(reminder.copy(wasConfirmed = true)),
+              LogReminderConfirmationAction(text, reminder.text, reminder.text),
+              TelegramAction(id, s"Ok, ${user.name}, I'll create a reminder for you")
+            )
+          } else
+            Seq(
+              TelegramAction(id, s"Ok, ${user.name}, then what do you want me to remind you about at ${new SimpleDateFormat(dateFormat).format(reminder.time)}?"),
+            )
+        case Some(TelegramAction(id, text)) if text.contains("then what do you want me to remind you about") =>
+          val reminder = InMemoryReminderRepository.repo.findReminderByUserId(user.id).get
+          Seq(
+            TelegramAction(id, "Ok, I'll create a reminder for you!"),
+            LogReminderConfirmationAction(reminder.text, reminder.text, textMessage),
+            SaveOrUpdateReminderAction(reminder.copy(wasConfirmed = true, text = textMessage))
+          )
+        case _ => Seq.empty
+      }
+      case None => Seq.empty
+    }
   }
 
   private def parseTimeForReminder(text: String): Long = {
