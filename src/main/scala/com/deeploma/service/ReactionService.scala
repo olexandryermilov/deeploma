@@ -53,16 +53,18 @@ object ReactionService {
       else {
         val user: User = maybeUser.get
         val contextActions: Seq[Action] = parseContext(user, textMessage)
-        if(contextActions.nonEmpty) contextActions
+        val result = if(contextActions.nonEmpty) contextActions
         else {
           val topic = TopicDetector.detectTopic(textMessage)
           topic match {
             case Food => reactToFoodQuestion(event)
             case Stock => parseStockRequest(event)
-            case ReminderTopic =>parseRemindRequest(event)
+            case ReminderTopic => parseRemindRequest(event)
             case Undefined => Seq.empty
           }
         }
+        if(!result.exists(_.isInstanceOf[SaveOrUpdateUserAction])) result ++ Seq(SaveOrUpdateUserAction(user.withNewMessage(textMessage)))
+        else result
       }
     Seq(
       //LoggableAction(response = event.message.toString),
