@@ -43,15 +43,16 @@ object ReactionService {
     val chatId: Long = event.chatId
     val maybeUser: Option[User] = getUserByTelegramChatId(chatId)
     val textMessage: String = event.text
+    val debug = if(textMessage == "gdpr") Seq(TelegramAction(to = chatId, maybeUser.get.toString)) else Seq.empty
     val userActions: Seq[Action] =
       if (maybeUser.isEmpty)
         Seq(
           TelegramAction(to = chatId, text = askForName),
-          SaveOrUpdateUserAction(User(id = UUID.randomUUID(), telegramContext = Some(TelegramContext(chatId = chatId, lastActionDone = Some(TelegramAction(to = chatId, text = askForName))))))
+          SaveOrUpdateUserAction(User(id = UUID.randomUUID(), telegramContext = Some(TelegramContext(chatId = chatId, allMessages = Seq(textMessage), lastActionDone = Some(TelegramAction(to = chatId, text = askForName))))))
         )
       else {
         val user: User = maybeUser.get
-        val contextActions: Seq[Action]  = parseContext(user, textMessage)
+        val contextActions: Seq[Action] = parseContext(user, textMessage)
         if(contextActions.nonEmpty) contextActions
         else {
           val topic = TopicDetector.detectTopic(textMessage)
@@ -65,7 +66,7 @@ object ReactionService {
       }
     Seq(
       //LoggableAction(response = event.message.toString),
-    ) ++ userActions
+    ) ++ userActions ++ debug
   }
 
   private def unknownEvent(event: Event): Seq[Action] = Seq.empty
@@ -85,9 +86,10 @@ object ReactionService {
         val stock = maybeStock.get
         val price = stock.getQuote.getPrice
         val stockInterest = StockInterest(stockName)
-        (if(!user.interests.contains(stockInterest)) Seq(SaveOrUpdateUserAction(user.withNewInterest(stockInterest))) else Seq.empty) ++ Seq(
+        (if(!user.interests.contains(stockInterest)) Seq(SaveOrUpdateUserAction(user.withNewInterest(stockInterest).withNewMessage(event.text))) else Seq.empty) ++ Seq(
           TelegramAction(chatId, s"$stockName is currently selling for ${price.toString}."),
-          LogMessageType(text, Request)
+          LogMessageType(text, Request),
+          SaveOrUpdateUserAction(user.withNewMessage(event.text))
         )
       }
       else {
@@ -167,7 +169,7 @@ object ReactionService {
           val name = textMessage
           val niceToMeetYou = TelegramAction(id, s"Hi, $name! Nice to meet you!")
           Seq(
-            SaveOrUpdateUserAction(User(id = user.id, telegramContext = Some(TelegramContext(id, Some(niceToMeetYou))), userContext = Some(UserContext(name, Seq.empty)))),
+            SaveOrUpdateUserAction(User(id = user.id, telegramContext = Some(TelegramContext(id, Some(niceToMeetYou), allMessages = Seq(s"My name is $name"))), userContext = Some(UserContext(name, Seq.empty)))),
             niceToMeetYou
           )
         case Some(TelegramAction(id, _)) if textMessage.toLowerCase == "forget about it" => Seq(

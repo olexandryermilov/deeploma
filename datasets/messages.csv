@@ -28,3 +28,4 @@ message_text,message_type
 "remind me to go to sleep in 1 hour",request
 "remind me to drink water in 5 minutes",request
 "how much is wix stock",request
+"remind me to watch spacex launch in 50 minutes",request

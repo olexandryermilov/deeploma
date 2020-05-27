@@ -3,8 +3,7 @@ package com.deeploma
 import java.io.FileWriter
 
 import com.deeploma.core._
-import com.deeploma.domain.{Reminder, User}
-import com.deeploma.environments.{ClockEnvironment, ReminderEnvironment, TelegramEnvironment}
+import com.deeploma.environments.{ReminderEnvironment, TelegramEnvironment}
 import com.deeploma.repository.{InMemoryReminderRepository, InMemoryUserRepository}
 import com.deeploma.service.ReactionService
 import com.deeploma.service.ReactionService.mapper

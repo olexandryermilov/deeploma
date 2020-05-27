@@ -6,4 +6,6 @@ sealed trait Context
 
 case class UserContext(name: String, interests: Seq[Interest]) extends Context
 
-case class TelegramContext(chatId: Long, lastActionDone: Option[TelegramAction]) extends Context
+case class TelegramContext(chatId: Long,
+                           lastActionDone: Option[TelegramAction],
+                           allMessages: Seq[String]) extends Context

@@ -16,6 +16,10 @@ case class User(id: UUID,
     userContext = userContext.map(_.copy(interests = this.userContext.get.interests ++ Seq(interest)))
   )
 
+  def withNewMessage(messageText: String): User = this.copy(
+    telegramContext = telegramContext.map(_.copy(allMessages = this.telegramContext.get.allMessages ++ Seq(messageText)))
+  )
+
   def name: String = userContext.map(_.name).getOrElse("")
 
   def interests: Seq[Interest] = userContext.map(_.interests).getOrElse(Seq.empty)
