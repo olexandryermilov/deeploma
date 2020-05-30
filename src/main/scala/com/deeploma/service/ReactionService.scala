@@ -63,8 +63,10 @@ object ReactionService {
             case Undefined => Seq.empty
           }
         }
-        if(!result.exists(_.isInstanceOf[SaveOrUpdateUserAction])) result ++ Seq(SaveOrUpdateUserAction(user.withNewMessage(textMessage)))
-        else result
+        answerQuestion(event) ++ {
+          if (!result.exists(_.isInstanceOf[SaveOrUpdateUserAction])) result ++ Seq(SaveOrUpdateUserAction(user.withNewMessage(textMessage)))
+          else result
+        }
       }
     Seq(
       //LoggableAction(response = event.message.toString),
@@ -139,10 +141,8 @@ object ReactionService {
       .header("x-rapidapi-key", "8265e9934bmsh830223de097c707p107c33jsncdf2b74dfb6b")
       .routeParam("q", event.text)
       .asString().getBody
-    println(response)
 
     val answer = Try(mapper.readValue[FoodResp](response).answer.nullToFailed).getOrElse("")
-    println(answer)
 
     Seq(TelegramAction(event.chatId, text = answer))
   }.map {
@@ -162,6 +162,26 @@ object ReactionService {
           wasSent = true
         ))
     )
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  case class BertResp(answer: String)
+
+  private def answerQuestion(event: TelegramEvent): Seq[Action] = {
+    val question = event.text
+    val userMessages = getUserByTelegramChatIdUnsafe(event.chatId).telegramContext.get.allMessages.mkString(". ")
+    val body = s"""{
+                  |"text":"$userMessages",
+                  |"question":"$question"
+                  |}
+                  |""".stripMargin
+    val request = Unirest.post(s"http://127.0.0.1:9090/bert")
+      .header("Content-Type", "application/json")
+      .body(body)
+    val response = request.asString().getBody
+    val answer = Try(mapper.readValue[BertResp](response).answer).getOrElse("")
+
+    Seq(TelegramAction(event.chatId, text = answer))
   }
 
   private def parseContext(user: User, textMessage: String): Seq[Action] = {
