@@ -112,7 +112,7 @@ object ReactionService {
       val user: User = getUserByTelegramChatIdUnsafe(chatId)
       val whenDate: Date = new Date(parseTimeForReminder(text) + System.currentTimeMillis())
       val when: String = new SimpleDateFormat(dateFormat).format(whenDate)
-      val what: String = text
+      val what: String = askBert(text, "What should I remind you?")
       val confirmReminder: TelegramAction = TelegramAction(to = chatId, text = s"${user.name}, you're asking to remind you at $when to $what, right?")
       Seq(
         confirmReminder,
@@ -169,9 +169,18 @@ object ReactionService {
 
   private def answerQuestion(event: TelegramEvent): Seq[Action] = {
     val question = event.text
-    val userMessages = getUserByTelegramChatIdUnsafe(event.chatId).telegramContext.get.allMessages.mkString(". ")
+    if(isAQuestion(question)) {
+      val userMessages = getUserByTelegramChatIdUnsafe(event.chatId).telegramContext.get.allMessages.mkString(". ")
+
+      Seq(TelegramAction(event.chatId, text = askBert(question, userMessages)))
+    } else Seq.empty
+  }
+
+  private def isAQuestion(text: String): Boolean = text.contains("?")
+
+  private def askBert(question: String, text: String): String = {
     val body = s"""{
-                  |"text":"$userMessages",
+                  |"text":"$text",
                   |"question":"$question"
                   |}
                   |""".stripMargin
@@ -179,9 +188,7 @@ object ReactionService {
       .header("Content-Type", "application/json")
       .body(body)
     val response = request.asString().getBody
-    val answer = Try(mapper.readValue[BertResp](response).answer).getOrElse("")
-
-    Seq(TelegramAction(event.chatId, text = answer))
+    Try(mapper.readValue[BertResp](response).answer).getOrElse("")
   }
 
   private def parseContext(user: User, textMessage: String): Seq[Action] = {
