@@ -18,4 +18,6 @@ trait UserRepository {
   def updateUsersTelegramContext(uuid: UUID, newContext: Option[TelegramContext]): User
 
   def updateUserContext(uuid: UUID, newContext: Option[UserContext]): User
+
+  def updateUserMessageStory(chatId: Long, newMessage: String): User
 }

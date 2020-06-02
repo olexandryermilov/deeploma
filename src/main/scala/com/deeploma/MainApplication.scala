@@ -55,6 +55,7 @@ object MainApplication {
     case SaveOrUpdateReminderAction(reminder) => InMemoryReminderRepository.repo.saveOrUpdateReminder(reminder)
     case LogReminderConfirmationAction(text, parsed, confirmed) => logReminder(text, parsed, confirmed)
     case LogMessageType(text, messageType) => logMessage(text, messageType.toString)
+    case UpdateMessageHistoryAction(chatId, newMessage) => InMemoryUserRepository.repository.updateUserMessageStory(chatId, newMessage)
     case EmptyAction() =>
   }
 

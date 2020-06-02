@@ -64,13 +64,14 @@ object ReactionService {
           }
         }
         answerQuestion(event) ++ {
-          if (!result.exists(_.isInstanceOf[SaveOrUpdateUserAction])) result ++ Seq(SaveOrUpdateUserAction(user.withNewMessage(textMessage)))
-          else result
+          //if (!result.exists(_.isInstanceOf[SaveOrUpdateUserAction])) result ++ Seq(SaveOrUpdateUserAction(user.withNewMessage(textMessage)))
+          //else
+          result
         }
       }
     Seq(
       //LoggableAction(response = event.message.toString),
-    ) ++ userActions ++ debug
+    ) ++ userActions ++ debug ++ Seq(UpdateMessageHistoryAction(chatId, textMessage))
   }
 
   private def unknownEvent(event: Event): Seq[Action] = Seq.empty
@@ -93,7 +94,7 @@ object ReactionService {
         (if(!user.interests.contains(stockInterest)) Seq(SaveOrUpdateUserAction(user.withNewInterest(stockInterest).withNewMessage(event.text))) else Seq.empty) ++ Seq(
           TelegramAction(chatId, s"$stockName is currently selling for ${price.toString}."),
           LogMessageType(text, Request),
-          SaveOrUpdateUserAction(user.withNewMessage(event.text))
+          //SaveOrUpdateUserAction(user.withNewMessage(event.text))
         )
       }
       else {
@@ -116,7 +117,7 @@ object ReactionService {
       val confirmReminder: TelegramAction = TelegramAction(to = chatId, text = s"${user.name}, you're asking to remind you at $when to $what, right?")
       Seq(
         confirmReminder,
-        SaveOrUpdateUserAction(user.withLastTelegramActionDone(confirmReminder)),
+        //SaveOrUpdateUserAction(user.withLastTelegramActionDone(confirmReminder)),
         SaveOrUpdateReminderAction(Reminder(UUID.randomUUID(), user.id, text, whenDate, wasSent = false, wasConfirmed = false)),
         LogMessageType(text, Request)
       )
@@ -210,7 +211,7 @@ object ReactionService {
             Seq(
               SaveOrUpdateReminderAction(reminder.copy(wasConfirmed = true)),
               LogReminderConfirmationAction(text, reminder.text, reminder.text),
-              TelegramAction(id, s"Ok, ${user.name}, I'll create a reminder for you")
+              TelegramAction(id, s"Ok, ${user.name}, I'll create a reminder for you"),
             )
           } else
             Seq(
