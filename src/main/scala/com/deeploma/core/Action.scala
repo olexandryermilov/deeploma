@@ -1,7 +1,5 @@
 package com.deeploma.core
 
-import java.util.UUID
-
 import com.deeploma.domain.{MessageType, Reminder, User}
 
 sealed trait Action

@@ -4,7 +4,7 @@ import java.text.SimpleDateFormat
 import java.util.{Date, UUID}
 
 import com.deeploma.core._
-import com.deeploma.domain.{Food, Reminder, ReminderTopic, Request, Stock, StockInterest, Undefined, User}
+import com.deeploma.domain.{Food, MessageType, Question, Reminder, ReminderTopic, Request, Stock, StockInterest, Undefined, User}
 import com.deeploma.repository.{InMemoryReminderRepository, InMemoryUserRepository}
 import com.deeploma.utils._
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
@@ -43,7 +43,7 @@ object ReactionService {
     val chatId: Long = event.chatId
     val maybeUser: Option[User] = getUserByTelegramChatId(chatId)
     val textMessage: String = event.text
-    val debug = if(textMessage == "gdpr") Seq(TelegramAction(to = chatId, maybeUser.get.toString)) else Seq.empty
+    val debug = if (textMessage == "gdpr") Seq(TelegramAction(to = chatId, maybeUser.get.toString)) else Seq.empty
     val userActions: Seq[Action] =
       if (maybeUser.isEmpty)
         Seq(
@@ -53,21 +53,23 @@ object ReactionService {
       else {
         val user: User = maybeUser.get
         val contextActions: Seq[Action] = parseContext(user, textMessage)
-        val result = if(contextActions.nonEmpty) contextActions
+        val result = if (contextActions.nonEmpty) contextActions
         else {
-          val topic = TopicDetector.detectTopic(textMessage)
-          topic match {
-            case Food => reactToFoodQuestion(event)
-            case Stock => parseStockRequest(event)
-            case ReminderTopic => parseRemindRequest(event)
-            case Undefined => Seq.empty
+          val messageType = checkSentenceType(event)
+          messageType match {
+            case Request =>
+              val topic = TopicDetector.detectTopic(textMessage)
+              topic match {
+                case Food => reactToFoodQuestion(event)
+                case Stock => parseStockRequest(event)
+                case ReminderTopic => parseRemindRequest(event)
+                case Undefined => Seq.empty
+              }
+            case Question => answerQuestion(event)
           }
+
         }
-        answerQuestion(event) ++ {
-          //if (!result.exists(_.isInstanceOf[SaveOrUpdateUserAction])) result ++ Seq(SaveOrUpdateUserAction(user.withNewMessage(textMessage)))
-          //else
-          result
-        }
+        result
       }
     Seq(
       //LoggableAction(response = event.message.toString),
@@ -84,17 +86,16 @@ object ReactionService {
       val words = text.split(" ")
       val indexOfStock = words.indexOf("stock")
       val stockName = words(indexOfStock - 1)
-      val maybeStock = Try{
+      val maybeStock = Try {
         YahooFinance.get(stockName.toUpperCase)
       }.toOption.nullToNone
-      if(maybeStock.nonEmpty) {
+      if (maybeStock.nonEmpty) {
         val stock = maybeStock.get
         val price = stock.getQuote.getPrice
         val stockInterest = StockInterest(stockName)
-        (if(!user.interests.contains(stockInterest)) Seq(SaveOrUpdateUserAction(user.withNewInterest(stockInterest).withNewMessage(event.text))) else Seq.empty) ++ Seq(
+        (if (!user.interests.contains(stockInterest)) Seq(SaveOrUpdateUserAction(user.withNewInterest(stockInterest).withNewMessage(event.text))) else Seq.empty) ++ Seq(
           TelegramAction(chatId, s"$stockName is currently selling for ${price.toString}."),
           LogMessageType(text, Request),
-          //SaveOrUpdateUserAction(user.withNewMessage(event.text))
         )
       }
       else {
@@ -170,7 +171,7 @@ object ReactionService {
 
   private def answerQuestion(event: TelegramEvent): Seq[Action] = {
     val question = event.text
-    if(isAQuestion(question)) {
+    if (isAQuestion(question)) {
       val userMessages = getUserByTelegramChatIdUnsafe(event.chatId).telegramContext.get.allMessages.mkString(". ")
 
       Seq(TelegramAction(event.chatId, text = askBert(question, userMessages)))
@@ -180,16 +181,23 @@ object ReactionService {
   private def isAQuestion(text: String): Boolean = text.contains("?")
 
   private def askBert(question: String, text: String): String = {
-    val body = s"""{
-                  |"text":"$text",
-                  |"question":"$question"
-                  |}
-                  |""".stripMargin
+    val body =
+      s"""{
+         |"text":"$text",
+         |"question":"$question"
+         |}
+         |""".stripMargin
     val request = Unirest.post(s"http://127.0.0.1:9090/bert")
       .header("Content-Type", "application/json")
       .body(body)
     val response = request.asString().getBody
     Try(mapper.readValue[BertResp](response).answer).getOrElse("")
+  }
+
+  private def checkSentenceType(event: TelegramEvent): MessageType = {
+    val text = event.text
+    if (text.contains("?")) Question
+    else Request
   }
 
   private def parseContext(user: User, textMessage: String): Seq[Action] = {

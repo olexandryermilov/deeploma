@@ -45,18 +45,30 @@ object MainApplication {
   private def reactToEvent(event: Event): Seq[Action] = ReactionService.reactToEvent(event)
 
   def doAction(action: Action): Unit = action match {
-    case LoggableAction(response) => println(response)
+    case a@LoggableAction(response) => println(response)
+      println(a)
     case action@TelegramAction(to, text) => {
+      println(action)
       TelegramEnvironment.env.sendMessage(to, text)
       val user = InMemoryUserRepository.repository.getUserByTelegramChatId(chatId = to)
       if (user.nonEmpty) doAction(SaveOrUpdateUserAction(user.get.withLastTelegramActionDone(action)))
     }
-    case SaveOrUpdateUserAction(user) => InMemoryUserRepository.repository.saveUser(user)
-    case SaveOrUpdateReminderAction(reminder) => InMemoryReminderRepository.repo.saveOrUpdateReminder(reminder)
-    case LogReminderConfirmationAction(text, parsed, confirmed) => logReminder(text, parsed, confirmed)
-    case LogMessageType(text, messageType) => logMessage(text, messageType.toString)
-    case UpdateMessageHistoryAction(chatId, newMessage) => InMemoryUserRepository.repository.updateUserMessageStory(chatId, newMessage)
-    case EmptyAction() =>
+    case action@SaveOrUpdateUserAction(user) =>
+      println(action)
+      InMemoryUserRepository.repository.saveUser(user)
+    case action@SaveOrUpdateReminderAction(reminder) =>
+      println(action)
+      InMemoryReminderRepository.repo.saveOrUpdateReminder(reminder)
+    case action@LogReminderConfirmationAction(text, parsed, confirmed) =>
+      println(action)
+      logReminder(text, parsed, confirmed)
+    case action@LogMessageType(text, messageType) =>
+      println(action)
+      logMessage(text, messageType.toString)
+    case action@UpdateMessageHistoryAction(chatId, newMessage) =>
+      println(action)
+      InMemoryUserRepository.repository.updateUserMessageStory(chatId, newMessage)
+    case action@EmptyAction() =>
   }
 
   private def logReminder(text: String, parsed: String, confirmed: String): Unit = {

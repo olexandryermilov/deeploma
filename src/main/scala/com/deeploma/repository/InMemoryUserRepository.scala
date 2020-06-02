@@ -20,7 +20,7 @@ class InMemoryUserRepository extends UserRepository {
     usersStorage.find(_.telegramContext.exists(_.chatId == chatId))
 
   override def updateUsersTelegramContext(id: UUID, newContext: Option[TelegramContext]): User = {
-    val user = usersStorage.find(_.id == id).map(user => user.copy(telegramContext = newContext)).get
+    val user = usersStorage.find(_.id == id).map(user => user.copy(telegramContext = Some(newContext.get.copy(allMessages = user.telegramContext.get.allMessages)))).get
     usersStorage = usersStorage.filter(_.id != id) ++ Seq(user)
     user
   }
@@ -33,9 +33,9 @@ class InMemoryUserRepository extends UserRepository {
 
   override def updateUserMessageStory(chatId: Long, newMessage: String): User = {
     val user = usersStorage.find(_.telegramContext.get.chatId == chatId)
-      .map(user => user.copy(telegramContext = Some(user.telegramContext.get.copy(allMessages = user.telegramContext.get.allMessages ++ Seq(newMessage))))).get
-    usersStorage = usersStorage.filter(_.telegramContext.get.chatId == chatId) ++ Seq(user)
-    user
+    val modified = user.map(user => user.copy(telegramContext = Some(user.telegramContext.get.copy(allMessages = user.telegramContext.get.allMessages ++ Seq(newMessage))))).get
+    usersStorage = usersStorage.filter(_.telegramContext.get.chatId != chatId) ++ Seq(modified)
+    modified
   }
 }
 
