@@ -65,7 +65,7 @@ object ReactionService {
                 case ReminderTopic => parseRemindRequest(event)
                 case Undefined => Seq.empty
               }
-            case Question => answerQuestion(event)
+            case Question => answerQuestion(event) ++ Seq(LogMessageType(event.text, Question))
           }
 
         }
@@ -80,12 +80,10 @@ object ReactionService {
 
   private def parseStockRequest(event: TelegramEvent): Seq[Action] = {
     val text: String = event.text.toLowerCase
-    if (text.contains("stock") && !text.startsWith("stock")) {
+    if (text.contains("stock")) {
       val chatId: Long = event.chatId
       val user: User = getUserByTelegramChatIdUnsafe(chatId)
-      val words = text.split(" ")
-      val indexOfStock = words.indexOf("stock")
-      val stockName = words(indexOfStock - 1)
+      val stockName = askBert("What stock am I talking about", text)
       val maybeStock = Try {
         YahooFinance.get(stockName.toUpperCase)
       }.toOption.nullToNone
@@ -118,7 +116,6 @@ object ReactionService {
       val confirmReminder: TelegramAction = TelegramAction(to = chatId, text = s"${user.name}, you're asking to remind you at $when to $what, right?")
       Seq(
         confirmReminder,
-        //SaveOrUpdateUserAction(user.withLastTelegramActionDone(confirmReminder)),
         SaveOrUpdateReminderAction(Reminder(UUID.randomUUID(), user.id, text, whenDate, wasSent = false, wasConfirmed = false)),
         LogMessageType(text, Request)
       )
@@ -146,7 +143,7 @@ object ReactionService {
 
     val answer = Try(mapper.readValue[FoodResp](response).answer.nullToFailed).getOrElse("")
 
-    Seq(TelegramAction(event.chatId, text = answer))
+    Seq(TelegramAction(event.chatId, text = answer), LogMessageType(event.text, Request))
   }.map {
     case e: Throwable => Seq(TelegramAction(event.chatId, text = e.getMessage))
     case x@_ => x
