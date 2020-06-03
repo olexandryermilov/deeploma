@@ -8,3 +8,7 @@ case object Request extends MessageType {
 case object Question extends MessageType {
   override def toString: String = "question"
 }
+
+case object EmptyMessageType extends MessageType {
+  override def toString: String = ""
+}

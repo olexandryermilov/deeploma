@@ -39,7 +39,7 @@ object MainApplication {
       reaction <- reactToEvent(event)
     } yield reaction
     if (reactions.nonEmpty) println(reactions)
-    reactions ++ ReactionService.checkForEmptyTelegramResponses(events, reactions)
+    reactions ++ ReactionService.checkForEmptyTelegramResponses(events, reactions) ++ ReactionService.checkForUnloggedMessages(events, reactions)
   }
 
   private def reactToEvent(event: Event): Seq[Action] = ReactionService.reactToEvent(event)
@@ -62,13 +62,13 @@ object MainApplication {
     case action@LogReminderConfirmationAction(text, parsed, confirmed) =>
       println(action)
       logReminder(text, parsed, confirmed)
-    case action@LogMessageType(text, messageType) =>
+    case action@LogMessageTypeAction(text, messageType) =>
       println(action)
       logMessage(text, messageType.toString)
     case action@UpdateMessageHistoryAction(chatId, newMessage) =>
       println(action)
       InMemoryUserRepository.repository.updateUserMessageStory(chatId, newMessage)
-    case action@EmptyAction() =>
+    case EmptyAction() =>
   }
 
   private def logReminder(text: String, parsed: String, confirmed: String): Unit = {

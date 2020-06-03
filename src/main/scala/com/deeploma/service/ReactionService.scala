@@ -4,7 +4,7 @@ import java.text.SimpleDateFormat
 import java.util.{Date, UUID}
 
 import com.deeploma.core._
-import com.deeploma.domain.{Food, MessageType, Question, Reminder, ReminderTopic, Request, Stock, StockInterest, Undefined, User}
+import com.deeploma.domain.{EmptyMessageType, Food, MessageType, Question, Reminder, ReminderTopic, Request, Stock, StockInterest, Undefined, User}
 import com.deeploma.repository.{InMemoryReminderRepository, InMemoryUserRepository}
 import com.deeploma.utils._
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
@@ -33,6 +33,13 @@ object ReactionService {
       ).map(event => {
       NoResponseLogger.handleNoResponseEvent(event)
       sorryTelegramEvent(event.asInstanceOf[TelegramEvent].message.chat.id)
+    })
+
+  def checkForUnloggedMessages(events: Seq[Event], reactions: Seq[Action]): Seq[Action] =
+    events.filter(event => event.isInstanceOf[TelegramEvent])
+      .filterNot(_ => reactions.exists(reaction => reaction.isInstanceOf[LogMessageTypeAction])
+      ).map(event => {
+      LogMessageTypeAction(event.asInstanceOf[TelegramEvent].text, EmptyMessageType)
     })
 
   private def clockEvent(clockEvent: ClockEvent): Seq[Action] = Seq(
@@ -65,7 +72,7 @@ object ReactionService {
                 case ReminderTopic => parseRemindRequest(event)
                 case Undefined => Seq.empty
               }
-            case Question => answerQuestion(event) ++ Seq(LogMessageType(event.text, Question))
+            case Question => answerQuestion(event) ++ Seq(LogMessageTypeAction(event.text, Question))
           }
 
         }
@@ -93,7 +100,7 @@ object ReactionService {
         val stockInterest = StockInterest(stockName)
         (if (!user.interests.contains(stockInterest)) Seq(SaveOrUpdateUserAction(user.withNewInterest(stockInterest).withNewMessage(event.text))) else Seq.empty) ++ Seq(
           TelegramAction(chatId, s"$stockName is currently selling for ${price.toString}."),
-          LogMessageType(text, Request),
+          LogMessageTypeAction(text, Request),
         )
       }
       else {
@@ -117,7 +124,7 @@ object ReactionService {
       Seq(
         confirmReminder,
         SaveOrUpdateReminderAction(Reminder(UUID.randomUUID(), user.id, text, whenDate, wasSent = false, wasConfirmed = false)),
-        LogMessageType(text, Request)
+        LogMessageTypeAction(text, Request)
       )
     } else
       Seq.empty
@@ -143,7 +150,7 @@ object ReactionService {
 
     val answer = Try(mapper.readValue[FoodResp](response).answer.nullToFailed).getOrElse("")
 
-    Seq(TelegramAction(event.chatId, text = answer), LogMessageType(event.text, Request))
+    Seq(TelegramAction(event.chatId, text = answer), LogMessageTypeAction(event.text, Request))
   }.map {
     case e: Throwable => Seq(TelegramAction(event.chatId, text = e.getMessage))
     case x@_ => x

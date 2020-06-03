@@ -40,5 +40,8 @@ message_text,message_type
 "how much is wix stock",request
 "remind me to drink water in 5 minutes",request
 "how much is wix stock",request
-"What is. my name?",question
-"?",question
+"What is my name?",question
+"?",trash
+"Hi",trash
+"Sasha",fact
+"I am 31",fact
