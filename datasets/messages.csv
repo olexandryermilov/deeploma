@@ -45,3 +45,5 @@ message_text,message_type
 "Hi",trash
 "Sasha",fact
 "I am 31",fact
+"What is love?",question
+"Tell me about yourself",

@@ -12,3 +12,7 @@ case object Question extends MessageType {
 case object EmptyMessageType extends MessageType {
   override def toString: String = ""
 }
+
+case object Fact extends MessageType {
+  override def toString: String = "fact"
+}

@@ -4,7 +4,7 @@ import java.text.SimpleDateFormat
 import java.util.{Date, UUID}
 
 import com.deeploma.core._
-import com.deeploma.domain.{EmptyMessageType, Food, MessageType, Question, Reminder, ReminderTopic, Request, Stock, StockInterest, Undefined, User}
+import com.deeploma.domain.{EmptyMessageType, Fact, Food, MessageType, Question, Reminder, ReminderTopic, Request, Stock, StockInterest, Undefined, User}
 import com.deeploma.repository.{InMemoryReminderRepository, InMemoryUserRepository}
 import com.deeploma.utils._
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
@@ -70,7 +70,7 @@ object ReactionService {
                 case Food => reactToFoodQuestion(event)
                 case Stock => parseStockRequest(event)
                 case ReminderTopic => parseRemindRequest(event)
-                case Undefined => Seq.empty
+                case Undefined => Seq(LogMessageTypeAction(event.text, Fact))
               }
             case Question => answerQuestion(event) ++ Seq(LogMessageTypeAction(event.text, Question))
           }
