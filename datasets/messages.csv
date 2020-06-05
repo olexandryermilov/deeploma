@@ -46,4 +46,59 @@ message_text,message_type
 "Sasha",fact
 "I am 31",fact
 "What is love?",question
-"Tell me about yourself",
+"Tell me about yourself",request
+"hi",trash
+"Hi",trash
+"Sasha",fact
+"I am 21",fact
+"I live in Kyiv",fact
+"I’m studying computer science",fact
+"I’ve been to 14 countries",fact
+"How much countries did I visit?",question
+"Am I learning computer science?",question
+"What am I studying",fact
+"What am I studying?",question
+"Did I visit 10 countries last year?",question
+"I was born in Ukraine",fact
+"I like trains",fact
+"I am a programmer",fact
+"I am your creator",fact
+"What am I?",question
+"I am a male",fact
+"Am I male or female?",question
+"What is my age?",question
+"Where do I live",fact
+"Where do I live?",question
+"What country do I live in?",question
+"Hi",
+"Sasa",
+"What a good day!",fact
+"gdpr",fact
+"Hih",
+"Sasha",
+"Nice to meet you too!",fact
+"gdpr",fact
+"Hi",
+"Sasha",
+"Nice to meet you too",fact
+"gdpr",fact
+"hi",
+"Sasha",
+"nice to meet you too!",fact
+"Hi",
+"Sasha",
+"nice to meet you too",fact
+"It’s good that you are learning. I like it!",fact
+"Hi",
+"Sasha",
+"nice to meet you too!",fact
+"gdpr",fact
+"nice to meet you too",fact
+"gdpr",fact
+"Hi",
+"Sasha",
+"nice to meet you too!",fact
+"Hi",
+"Sasha",
+"nice to meet you too!",fact
+"bad day today",fact

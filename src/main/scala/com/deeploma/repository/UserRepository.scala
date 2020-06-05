@@ -20,4 +20,6 @@ trait UserRepository {
   def updateUserContext(uuid: UUID, newContext: Option[UserContext]): User
 
   def updateUserMessageStory(chatId: Long, newMessage: String): User
+
+  def updateUserSentimentScore(chatId: Long, newScore: Double): User
 }

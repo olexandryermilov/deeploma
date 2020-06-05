@@ -5,6 +5,8 @@ import java.util.UUID
 import com.deeploma.core.{TelegramContext, UserContext}
 import com.deeploma.domain.User
 
+import scala.util.Try
+
 class InMemoryUserRepository extends UserRepository {
 
   var usersStorage: Seq[User] = Seq.empty
@@ -37,9 +39,21 @@ class InMemoryUserRepository extends UserRepository {
     usersStorage = usersStorage.filter(_.telegramContext.get.chatId != chatId) ++ Seq(modified)
     modified
   }
+
+  override def updateUserSentimentScore(chatId: Long, newScore: Double): User = {
+    val user = usersStorage.find(_.telegramContext.get.chatId == chatId).getOrElse(User(UUID.randomUUID(), telegramContext = Some(TelegramContext(chatId, None, Seq.empty))))
+    val modified = Try {
+      user.copy(
+        userContext = Some(user.userContext.get.copy(textsSentimentScore = user.userContext.get.textsSentimentScore ++ Seq(newScore)))
+      )
+    }.getOrElse(user)
+    usersStorage = usersStorage.filter(_.telegramContext.get.chatId != chatId) ++ Seq(modified)
+    modified
+  }
 }
 
 object InMemoryUserRepository {
   val repository: UserRepository = createRepository
+
   private def createRepository: UserRepository = new InMemoryUserRepository
 }

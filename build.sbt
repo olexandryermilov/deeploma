@@ -15,7 +15,12 @@ libraryDependencies += "com.yahoofinance-api" % "YahooFinanceAPI" % "3.15.0"
 
 
 //libraryDependencies += "uk.ac.abdn" % "SimpleNLG" % "4.4.8"
-//libraryDependencies += "com.johnsnowlabs.nlp" % "spark-nlp_2.11" % "2.5.0"
+// https://mvnrepository.com/artifact/com.johnsnowlabs.nlp/spark-nlp
+/*libraryDependencies += "com.johnsnowlabs.nlp" % "spark-nlp_2.11" % "2.5.1"
+libraryDependencies += "org.apache.spark" % "spark-core_2.11" % "2.4.0"
+libraryDependencies +=  "org.apache.spark" % "spark-sql_2.11" % "2.4.0"
+libraryDependencies +=  "org.apache.spark" % "spark-mllib_2.11" % "2.4.0"*/
 // https://mvnrepository.com/artifact/com.mashape.unirest/unirest-java
 libraryDependencies += "com.mashape.unirest" % "unirest-java" % "1.4.9"
 libraryDependencies += "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % "2.9.8"
+libraryDependencies += "io.lemonlabs" %% "scala-uri" % "2.2.2"

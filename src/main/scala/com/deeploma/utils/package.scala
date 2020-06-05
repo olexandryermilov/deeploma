@@ -21,4 +21,10 @@ package object utils {
     }
   }
 
+  implicit class SeqExtensions(val any: Seq[Double]) extends AnyVal {
+    def mean: Double = {
+      any.sum / Math.max(1, any.size)
+    }
+  }
+
 }

@@ -8,6 +8,9 @@ import com.deeploma.repository.{InMemoryReminderRepository, InMemoryUserReposito
 import com.deeploma.service.ReactionService
 import com.deeploma.service.ReactionService.mapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import com.mashape.unirest.http.Unirest
+
+import scala.util.Try
 
 object MainApplication {
 
@@ -68,6 +71,9 @@ object MainApplication {
     case action@UpdateMessageHistoryAction(chatId, newMessage) =>
       println(action)
       InMemoryUserRepository.repository.updateUserMessageStory(chatId, newMessage)
+    case action@UpdateScoreHistoryAction(chatId, newScore) =>
+      println(action)
+      InMemoryUserRepository.repository.updateUserSentimentScore(chatId, newScore)
     case EmptyAction() =>
   }
 

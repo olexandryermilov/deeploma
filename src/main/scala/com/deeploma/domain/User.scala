@@ -3,6 +3,7 @@ package com.deeploma.domain
 import java.util.UUID
 
 import com.deeploma.core.{TelegramAction, TelegramContext, UserContext}
+import com.deeploma.utils._
 
 case class User(id: UUID,
                 telegramContext: Option[TelegramContext] = None,
@@ -23,4 +24,6 @@ case class User(id: UUID,
   def name: String = userContext.map(_.name).getOrElse("")
 
   def interests: Seq[Interest] = userContext.map(_.interests).getOrElse(Seq.empty)
+
+  def meanSentimentScore: Double = userContext.map(_.textsSentimentScore).getOrElse(Seq(0.0)).mean
 }

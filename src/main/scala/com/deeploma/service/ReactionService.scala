@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.mashape.unirest.http.Unirest
+import io.lemonlabs.uri.Url
 import yahoofinance.YahooFinance
 
 import scala.util.Try
@@ -32,8 +33,19 @@ object ReactionService {
         .exists(reaction => reaction.asInstanceOf[TelegramAction].to == event.asInstanceOf[TelegramEvent].message.chat.id)
       ).map(event => {
       NoResponseLogger.handleNoResponseEvent(event)
-      sorryTelegramEvent(event.asInstanceOf[TelegramEvent].message.chat.id)
+      findMessageForConversation(event.asInstanceOf[TelegramEvent])
     })
+
+  private def findMessageForConversation(event: TelegramEvent): Action = {
+    val user: User = getUserByTelegramChatIdUnsafe(event.chatId)
+    val sentimentOfMessage = sentimentAnalysisScore(event.text)
+    if(user.meanSentimentScore >= 0.5 || sentimentOfMessage > 0.3){
+      TelegramAction(event.chatId, "Good to see that you are in a good mood!")
+    }
+      else if(user.meanSentimentScore<= -0.5 || sentimentOfMessage < -0.3){
+      TelegramAction(event.chatId, "Hey, are you alright? You sound sad today!")
+    } else sorryTelegramEvent(event.asInstanceOf[TelegramEvent].message.chat.id)
+  }
 
   def checkForUnloggedMessages(events: Seq[Event], reactions: Seq[Action]): Seq[Action] =
     events.filter(event => event.isInstanceOf[TelegramEvent])
@@ -78,12 +90,21 @@ object ReactionService {
         }
         result
       }
-    Seq(
-      //LoggableAction(response = event.message.toString),
-    ) ++ userActions ++ debug ++ Seq(UpdateMessageHistoryAction(chatId, textMessage))
+    userActions ++ debug ++ Seq(UpdateMessageHistoryAction(chatId, textMessage)) ++ sentimentAnalysis(event)
   }
 
   private def unknownEvent(event: Event): Seq[Action] = Seq.empty
+
+  private def describeMessage(text: String) = {
+    /*val testData = spark.createDataFrame(Seq(
+      (1, "Google has announced the release of a beta version of the popular TensorFlow machine learning library"),
+      (2, "Donald John Trump (born June 14, 1946) is the 45th and current president of the United States")
+    )).toDF("id", "text")
+
+    val pipeline = PretrainedPipeline("explain_document_dl", lang="en")
+
+    val annotation = pipeline.transform(testData)*/
+  }
 
   private def parseStockRequest(event: TelegramEvent): Seq[Action] = {
     val text: String = event.text.toLowerCase
@@ -211,7 +232,7 @@ object ReactionService {
           val name = textMessage
           val niceToMeetYou = TelegramAction(id, s"Hi, $name! Nice to meet you!")
           Seq(
-            SaveOrUpdateUserAction(User(id = user.id, telegramContext = Some(TelegramContext(id, Some(niceToMeetYou), allMessages = Seq(s"My name is $name"))), userContext = Some(UserContext(name, Seq.empty)))),
+            SaveOrUpdateUserAction(User(id = user.id, telegramContext = Some(TelegramContext(id, Some(niceToMeetYou), allMessages = Seq(s"My name is $name"))), userContext = Some(UserContext(name, Seq.empty, Seq.empty)))),
             niceToMeetYou
           )
         case Some(TelegramAction(id, _)) if textMessage.toLowerCase == "forget about it" => Seq(
@@ -241,6 +262,38 @@ object ReactionService {
       case None => Seq.empty
     }
   }
+
+  private def sentimentAnalysisScore(text: String): Double = Try {
+    val response = Unirest.post("https://twinword-sentiment-analysis.p.rapidapi.com/analyze/")
+      .header("x-rapidapi-host", "twinword-sentiment-analysis.p.rapidapi.com")
+      .header("x-rapidapi-key", "8265e9934bmsh830223de097c707p107c33jsncdf2b74dfb6b")
+      .header("content-type", "application/x-www-form-urlencoded")
+      .body(
+        s"text=${Url.parse(text)}")
+      .asString().getBody
+    Try(mapper.readValue[SentimentResp](response).score.nullToFailed).getOrElse(0.0)
+  }.get
+
+  private def sentimentAnalysis(event: TelegramEvent): Seq[Action] = Try {
+    val response = Unirest.post("https://twinword-sentiment-analysis.p.rapidapi.com/analyze/")
+      .header("x-rapidapi-host", "twinword-sentiment-analysis.p.rapidapi.com")
+      .header("x-rapidapi-key", "8265e9934bmsh830223de097c707p107c33jsncdf2b74dfb6b")
+      .header("content-type", "application/x-www-form-urlencoded")
+      .body(
+        s"text=${Url.parse(event.text)}")
+      .asString().getBody
+    println(Url.parse(event.text))
+    println(response)
+    val answer = Try(mapper.readValue[SentimentResp](response).score.nullToFailed).getOrElse(0.0)
+    Seq(UpdateScoreHistoryAction(event.chatId, answer))
+  }.map {
+    case e: Throwable => Seq(TelegramAction(event.chatId, text = e.getMessage))
+    case x@_ => x
+  }.get
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  case class SentimentResp(score: Double)
+
 
   private def parseTimeForReminder(text: String): Long = {
     val timeMeasures = Seq("seconds", "minutes", "hours", "second", "minute", "hour")
