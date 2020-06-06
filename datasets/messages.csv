@@ -70,35 +70,22 @@ message_text,message_type
 "Where do I live",fact
 "Where do I live?",question
 "What country do I live in?",question
-"Hi",
-"Sasa",
 "What a good day!",fact
 "gdpr",fact
-"Hih",
-"Sasha",
 "Nice to meet you too!",fact
 "gdpr",fact
-"Hi",
-"Sasha",
 "Nice to meet you too",fact
 "gdpr",fact
-"hi",
-"Sasha",
 "nice to meet you too!",fact
-"Hi",
-"Sasha",
 "nice to meet you too",fact
 "It’s good that you are learning. I like it!",fact
-"Hi",
-"Sasha",
 "nice to meet you too!",fact
 "gdpr",fact
 "nice to meet you too",fact
 "gdpr",fact
-"Hi",
-"Sasha",
 "nice to meet you too!",fact
-"Hi",
-"Sasha",
 "nice to meet you too!",fact
 "bad day today",fact
+"Hi",fact
+"I found 5 cats today",fact
+"How many cats I saw today?",question
