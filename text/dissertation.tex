@@ -1,0 +1,41 @@
+%&preformat-disser
+\RequirePackage[l2tabu,orthodox]{nag}
+\documentclass[a4paper,14pt,oneside,openany]{memoir}
+
+\input{common/setup}            % общие настройки шаблона
+\input{common/packages}         % Пакеты общие для диссертации и автореферата
+\synopsisfalse                      % Этот документ --- не автореферат
+
+\input{common/fonts}            % Определение шрифтов (частичное)
+\input{common/styles}           % Стили общие для диссертации и автореферата
+
+\begin{document}
+
+\input{common/renames}
+
+
+\include{Dissertation/title}           % Титульный лист
+\include{Dissertation/contents}        % Оглавление
+\include{Dissertation/acronyms}
+\ifnumequal{\value{contnumfig}}{1}{}{\counterwithout{figure}{chapter}}
+\ifnumequal{\value{contnumtab}}{1}{}{\counterwithout{table}{chapter}}
+\include{Dissertation/introduction}    % Введение
+\ifnumequal{\value{contnumfig}}{1}{\counterwithout{figure}{chapter}
+}{\counterwithin{figure}{chapter}}
+\ifnumequal{\value{contnumtab}}{1}{\counterwithout{table}{chapter}
+}{\counterwithin{table}{chapter}}
+\include{Dissertation/part1}           % Глава 1
+\include{Dissertation/part2}           % Глава 2
+\include{Dissertation/part3}           % Глава 3
+\include{Dissertation/conclusion}      % Заключение
+\include{Dissertation/references}      % Список литературы
+
+
+\appendix
+\setlength{\midchapskip}{20pt}
+\renewcommand*{\afterchapternum}{\par\nobreak\vskip \midchapskip}
+\renewcommand\thechapter{\Asbuk{chapter}}
+
+\include{Dissertation/appendix}        % Приложения
+
+\end{document}

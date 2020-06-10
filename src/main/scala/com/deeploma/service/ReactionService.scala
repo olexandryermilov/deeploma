@@ -4,7 +4,7 @@ import java.text.SimpleDateFormat
 import java.util.{Date, UUID}
 
 import com.deeploma.core._
-import com.deeploma.domain.{EmptyMessageType, Fact, Food, MessageType, Question, Reminder, ReminderTopic, Request, Stock, StockInterest, Undefined, User}
+import com.deeploma.domain.{CovidTopic, EmptyMessageType, Fact, Food, MessageType, Question, Reminder, ReminderTopic, Request, Stock, StockInterest, Undefined, User, WeatherTopic}
 import com.deeploma.repository.{InMemoryReminderRepository, InMemoryUserRepository}
 import com.deeploma.utils._
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
@@ -39,12 +39,15 @@ object ReactionService {
   private def findMessageForConversation(event: TelegramEvent): Action = {
     val user: User = getUserByTelegramChatIdUnsafe(event.chatId)
     val sentimentOfMessage = sentimentAnalysisScore(event.text)
-    if(user.meanSentimentScore >= 0.5 || sentimentOfMessage > 0.3){
+    if (event.text.contains("Kate"))
+      TelegramAction(event.chatId, "Who is Kate? Tell me more about Kate")
+    else if (event.text.contains("Copenhagen"))
+      TelegramAction(event.chatId, "What is your thought of Copenhagen?")
+    else if (user.meanSentimentScore >= 0.5 || sentimentOfMessage > 0.3)
       TelegramAction(event.chatId, "Good to see that you are in a good mood!")
-    }
-      else if(user.meanSentimentScore<= -0.5 || sentimentOfMessage < -0.3){
+    else if (user.meanSentimentScore <= -0.5 || sentimentOfMessage < -0.3)
       TelegramAction(event.chatId, "Hey, are you alright? You sound sad today!")
-    } else sorryTelegramEvent(event.asInstanceOf[TelegramEvent].message.chat.id)
+    else sorryTelegramEvent(event.asInstanceOf[TelegramEvent].message.chat.id)
   }
 
   def checkForUnloggedMessages(events: Seq[Event], reactions: Seq[Action]): Seq[Action] =
@@ -61,6 +64,7 @@ object ReactionService {
   private def telegramEvent(event: TelegramEvent): Seq[Action] = {
     val chatId: Long = event.chatId
     val maybeUser: Option[User] = getUserByTelegramChatId(chatId)
+
     val textMessage: String = event.text
     val debug = if (textMessage == "gdpr") Seq(TelegramAction(to = chatId, maybeUser.get.toString)) else Seq.empty
     val userActions: Seq[Action] =
@@ -72,7 +76,9 @@ object ReactionService {
       else {
         val user: User = maybeUser.get
         val contextActions: Seq[Action] = parseContext(user, textMessage)
-        val result = if (contextActions.nonEmpty) contextActions
+        val result = if (event.message.location.nonEmpty)
+          weatherByLocation(event)
+        else if (contextActions.nonEmpty) contextActions
         else {
           val messageType = checkSentenceType(event)
           messageType match {
@@ -82,6 +88,8 @@ object ReactionService {
                 case Food => reactToFoodQuestion(event)
                 case Stock => parseStockRequest(event)
                 case ReminderTopic => parseRemindRequest(event)
+                case WeatherTopic => weather(event)
+                case CovidTopic => covid(event)
                 case Undefined => Seq(LogMessageTypeAction(event.text, Fact))
               }
             case Question => answerQuestion(event) ++ Seq(LogMessageTypeAction(event.text, Question))
@@ -95,6 +103,25 @@ object ReactionService {
 
   private def unknownEvent(event: Event): Seq[Action] = Seq.empty
 
+  private def covid(event: TelegramEvent): Seq[Action] = {
+    val text = event.text
+
+    val country = askBert("where?", text)
+    val response = Unirest.get(s"https://covid-19-data.p.rapidapi.com/report/country/name?date-format=YYYY-MM-DD&format=json&date=2020-05-27&name=$country")
+      .header("x-rapidapi-host", "covid-19-data.p.rapidapi.com")
+      .header("x-rapidapi-key", "8265e9934bmsh830223de097c707p107c33jsncdf2b74dfb6b")
+      .asString().getBody
+
+    val r = mapper.readValue[Seq[CovidResponse]](response).head.provinces.head
+    Seq(TelegramAction(event.chatId, s"Confirmed: ${r.confirmed}, recovered: ${r.recovered}, deaths: ${r.deaths}, active: ${r.active}"), LogMessageTypeAction(event.text, Request))
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  case class CovidResponse(provinces: Seq[Province])
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  case class Province(confirmed: Int, recovered: Int, deaths: Int, active: Int)
+
   private def describeMessage(text: String) = {
     /*val testData = spark.createDataFrame(Seq(
       (1, "Google has announced the release of a beta version of the popular TensorFlow machine learning library"),
@@ -105,6 +132,73 @@ object ReactionService {
 
     val annotation = pipeline.transform(testData)*/
   }
+
+  private def weather(event: TelegramEvent): Seq[Action] = {
+    val text = event.text
+    val where = askBert("weather where?", text)
+    val coord = coords(where)
+    println(coord)
+    val response = Unirest.get(s"https://dark-sky.p.rapidapi.com/${coord.lat},${coord.lng}?lang=en&units=auto")
+      .header("x-rapidapi-host", "dark-sky.p.rapidapi.com")
+      .header("x-rapidapi-key", "8265e9934bmsh830223de097c707p107c33jsncdf2b74dfb6b")
+      .asString().getBody
+
+    val weather = mapper.readValue[Weather](response)
+    val answer = s"For now - ${weather.currently.summary.toLowerCase}, temperature is ${weather.currently.temperature}, humidity is ${weather.currently.humidity}. Expected - ${weather.hourly.summary.toLowerCase()}."
+    Seq(
+      TelegramAction(event.chatId, answer)
+    )
+  }
+
+  private def weatherByLocation(event: TelegramEvent): Seq[Action] = {
+    val text = event.text
+    val response = Unirest.get(s"https://dark-sky.p.rapidapi.com/${event.message.location.get.latitude},${event.message.location.get.longitude}?lang=en&units=auto")
+      .header("x-rapidapi-host", "dark-sky.p.rapidapi.com")
+      .header("x-rapidapi-key", "8265e9934bmsh830223de097c707p107c33jsncdf2b74dfb6b")
+      .asString().getBody
+
+    val weather = mapper.readValue[Weather](response)
+    val answer = s"For now - ${weather.currently.summary.toLowerCase}, temperature is ${weather.currently.temperature}, humidity is ${weather.currently.humidity}. Expected - ${weather.hourly.summary.toLowerCase()}."
+    Seq(
+      TelegramAction(event.chatId, answer),
+      LogMessageTypeAction(event.text, Request)
+    )
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  case class Weather(currently: CurrentWeather, hourly: HourlyWeather)
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  case class CurrentWeather(summary: String, temperature: Double, humidity: Double)
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  case class HourlyWeather(summary: String)
+
+
+  private def coords(where: String): Coord = {
+    val response = Unirest.get(s"https://google-maps-geocoding.p.rapidapi.com/geocode/json?address=${Url.parse(where)}")
+      .header("x-rapidapi-host", "google-maps-geocoding.p.rapidapi.com")
+      .header("x-rapidapi-key", "8265e9934bmsh830223de097c707p107c33jsncdf2b74dfb6b")
+      .asString().getBody
+
+    println(mapper.readValue[Coords](response).results)
+    Try(mapper.readValue[Coords](response).results.head.geometry.bounds.northeast.nullToFailed).get //OrElse(Coord(49.27902, 28.5710879))
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  case class Coords(results: Seq[CoordResult])
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  case class CoordResult(geometry: Geometry)
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  case class Geometry(bounds: Bounds)
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  case class Bounds(northeast: Coord)
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  case class Coord(lat: Double, lng: Double)
 
   private def parseStockRequest(event: TelegramEvent): Seq[Action] = {
     val text: String = event.text.toLowerCase
@@ -126,7 +220,8 @@ object ReactionService {
       }
       else {
         Seq(
-          TelegramAction(chatId, "Sorry, I couldn't find this stock you are talking about. Maybe it's not in Yahoo's base yet or you need to check your spelling?")
+          TelegramAction(chatId, "Sorry, I couldn't find this stock you are talking about. Maybe it's not in Yahoo's base yet or you need to check your spelling?"),
+          LogMessageTypeAction(event.text, Request)
         )
       }
     }
@@ -144,7 +239,7 @@ object ReactionService {
       val confirmReminder: TelegramAction = TelegramAction(to = chatId, text = s"${user.name}, you're asking to remind you at $when to $what, right?")
       Seq(
         confirmReminder,
-        SaveOrUpdateReminderAction(Reminder(UUID.randomUUID(), user.id, text, whenDate, wasSent = false, wasConfirmed = false)),
+        SaveOrUpdateReminderAction(Reminder(UUID.randomUUID(), user.id, what, whenDate, wasSent = false, wasConfirmed = false)),
         LogMessageTypeAction(text, Request)
       )
     } else

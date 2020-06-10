@@ -89,3 +89,95 @@ message_text,message_type
 "Hi",fact
 "I found 5 cats today",fact
 "How many cats I saw today?",question
+"Hi",
+"Sasha",
+"hi",
+"Sasha",
+"Hi",
+"Sasha",
+"What is my name?",question
+"remind me to drink water in 1 minute",request
+"right",
+"Hi",
+"Sasha",
+"remind me to drink water in 2 minutes",request
+"right",
+"what a nice day today",fact
+"i feel bad tonight",fact
+"I am 21 years old. I was born in Vinnytsia. I really love Ukraine. I’m studying computer science",fact
+"What is my age?",question
+"Where was I born?",question
+"Where do I come from?",question
+"What country do I like?",question
+"how much is abc stock",request
+"how much is fdss stock",
+"what a nice day today",fact
+"i feel bad tonight",fact
+"remind me to take my pills in 45 seconds",request
+"right",
+"remind me to take my pills in 45 second",request
+"no",
+"forget about it",
+"remind me in 45 seconds to drink water",request
+"right",
+"How much vitamin c is in 2 apples",fact
+"Hi",
+"Sasha",
+"How much vitamin c is in 2 apples",request
+"How much calories in steak",request
+"Hi",fact
+"How are you",fact
+"Hi",
+"Sasha",
+"I’ve met Kate today",fact
+"I’ve been to Copenhagen last November",fact
+"hi",fact
+"/start",
+"Нгк ьщь",
+"Sorry I misspelled my name is You Mom",fact
+"Your mom I mean",fact
+"well remind my friend toras onepunchmanko check by bachelor's at 11 p.m. at least",request
+"not me",fact
+"you know",fact
+"I'm totally fine but it seems you are not intelligent enough",fact
+"Hi",
+"Sasha",
+"what is the weather in Kyiv, Ukraine?",question
+"what is the weather in Kyiv Ukraine",
+"weather in Vinnytsia, Ukraine",
+"weather in California, USA",
+"Hi",
+"Sasha",
+"what is the weather in Kyiv, Ukraine",
+"weather in Paris, France",
+"Hi",
+"weather",
+"Sasha",fact
+"Hi",
+"Sasha",
+"Hi",
+"Sasha",
+"what is the weather in Kyiv, Ukraine",
+"what is the weather in Paris, France",
+"weather in California, USA",
+"weather in Khreshchatyk, Kyiv, Ukraine",
+"hi",
+"sasha",
+"weather in Podil, Kyiv, Ukraine",
+"weather in Khreshchatyk, Kyiv, Ukraine",
+"",fact
+"hi",
+"sasha",
+"hi",
+"sasha",
+"",
+"Hi",
+"Sasha",
+"Hi",
+"Sasha",
+"tell about covid in ukraine",request
+"tell about covid in Ukraine",request
+"Hi",
+"Sasha",
+"tell about covid in ukraine",request
+"tell about covid in italy",request
